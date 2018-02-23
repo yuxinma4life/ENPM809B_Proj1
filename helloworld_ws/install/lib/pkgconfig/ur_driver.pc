@@ -1,0 +1,8 @@
+prefix=/home/yuxin/helloworld_ws/install
+
+Name: ur_driver
+Description: Description of ur_driver
+Version: 1.1.9
+Cflags: -I/home/yuxin/helloworld_ws/install/include
+Libs: -L/home/yuxin/helloworld_ws/install/lib 
+Requires: dynamic_reconfigure

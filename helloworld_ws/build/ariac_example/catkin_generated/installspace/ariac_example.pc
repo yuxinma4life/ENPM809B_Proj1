@@ -1,0 +1,8 @@
+prefix=/home/yuxin/helloworld_ws/install
+
+Name: ariac_example
+Description: Description of ariac_example
+Version: 0.1.0
+Cflags: 
+Libs: -L/home/yuxin/helloworld_ws/install/lib 
+Requires: 

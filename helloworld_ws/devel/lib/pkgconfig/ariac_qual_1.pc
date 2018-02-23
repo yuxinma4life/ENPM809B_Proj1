@@ -1,0 +1,8 @@
+prefix=/home/yuxin/helloworld_ws/devel
+
+Name: ariac_qual_1
+Description: Description of ariac_qual_1
+Version: 0.0.0
+Cflags: 
+Libs: -L/home/yuxin/helloworld_ws/devel/lib 
+Requires: 

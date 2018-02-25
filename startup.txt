@@ -1,0 +1,16 @@
+source ~/helloworld_ws/devel/setup.bash 
+
+rosrun osrf_gear gear.py -f `catkin_find --share osrf_gear`/config/comp_conf1.yaml /home/yuxin/helloworld_ws/src/ariac_example/config/sample_gear_conf.yaml 
+
+
+source ~/helloworld_ws/install/setup.bash
+roslaunch ur10_moveit_config ur10_moveit_planning_execution.launch sim:=true
+roslaunch ur10_moveit_config moveit_rviz.launch config:=true
+
+rosrun move_arm move_arm
+rostopic pub -1 /move_arm geometry_msgs/PoseStamped '{header: {stamp: now, frame_id: "world"}, pose: {position: {x: -0.1, y: 0.43, z: 0.9}, orientation: {w: -0.026, x: 0.925, y: -0.331, z: -0.183}}}'
+
+rostopic pub -1 /move_arm geometry_msgs/PoseStamped '{header: {stamp: now, frame_id: "world"}, pose: {position: {x: -0.1, y: 0.43, z: 0.9}, orientation: {w:  0.707, x: 0.0, y: 0.707, z: 0}}}'
+rostopic pub -1 /move_arm geometry_msgs/PoseStamped '{header: {stamp: now, frame_id: "world"}, pose: {position: {x: -0.2, y: 0.43, z: 0.9}, orientation: {w:  0.707, x: 0.0, y: 0.707, z: 0}}}'
+rostopic pub -1 /move_arm geometry_msgs/PoseStamped '{header: {stamp: now, frame_id: "world"}, pose: {position: {x: -0.3, y: 0.43, z: 0.9}, orientation: {w:  0.707, x: 0.0, y: 0.707, z: 0}}}'
+

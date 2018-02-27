@@ -13,15 +13,34 @@ rostopic pub -1 /move_arm geometry_msgs/PoseStamped '{header: {stamp: now, frame
 
 
 #part height 0.74
-rostopic pub -1 /move_arm geometry_msgs/PoseStamped '{header: {stamp: now, frame_id: "world"}, pose: {position: {x: -0.1, y: 0.43, z: 1}, orientation: {w:  0.707, x: 0.0, y: 0.707, z: 0}}}'
-rostopic pub -1 /move_arm geometry_msgs/PoseStamped '{header: {stamp: now, frame_id: "world"}, pose: {position: {x: -0.1, y: 0.43, z: 0.8}, orientation: {w:  0.707, x: 0.0, y: 0.707, z: 0}}}'
-#safe parking location:
-rostopic pub -1 /move_arm geometry_msgs/PoseStamped '{header: {stamp: now, frame_id: "world"}, pose: {position: {x: -0.1, y: 0.43, z: 1}, orientation: {w:  0.707, x: 0.0, y: 0.707, z: 0}}}'
-rostopic pub -1 /move_arm geometry_msgs/PoseStamped '{header: {stamp: now, frame_id: "world"}, pose: {position: {x: -0.1, y: 1.5, z: 1}, orientation: {w:  0.707, x: 0.0, y: 0.707, z: 0}}}'
-rostopic pub -1 /move_arm geometry_msgs/PoseStamped '{header: {stamp: now, frame_id: "world"}, pose: {position: {x: -0.1, y: 3.3, z: 1}, orientation: {w:  0.707, x: 0.0, y: 0.707, z: 0}}}'
-rostopic pub -1 /move_arm geometry_msgs/PoseStamped '{header: {stamp: now, frame_id: "world"}, pose: {position: {x: 0.2, y: 3.3, z: 1}, orientation: {w:  0.707, x: 0.0, y: 0.707, z: 0}}}'
+rostopic pub -1 /move_arm geometry_msgs/PoseStamped '{header: {stamp: now, frame_id: "world"}, pose: {position: {x: -0.1, y: 0.45, z: 0.75}, orientation: {w:  0.707, x: 0.0, y: 0.707, z: 0}}}'
 
+rostopic pub -1 /move_arm geometry_msgs/PoseStamped '{header: {stamp: now, frame_id: "world"}, pose: {position: {x: -0.1, y: -0.335, z: 0.75}, orientation: {w:  0.707, x: 0.0, y: 0.707, z: 0}}}'
+
+
+#inspection location
+
+rostopic pub -1 /move_arm geometry_msgs/PoseStamped '{header: {stamp: now, frame_id: "world"}, pose: {position: {x: -0.3, y: 0.23, z: 0.9}, orientation: {w:  0.707, x: 0.0, y: 0.707, z: 0}}}'
+
+#parking orbit
+rostopic pub -1 /move_arm geometry_msgs/PoseStamped '{header: {stamp: now, frame_id: "world"}, pose: {position: {x: 0.0, y: 0.23, z: 0.9}, orientation: {w:  0.707, x: 0.0, y: 0.707, z: 0}}}'
 
 to grab
 rostopic pub -1 /grab std_msgs/Empty 
+
+#tray left parking orbit
+
+rostopic pub -1 /move_arm geometry_msgs/PoseStamped '{header: {stamp: now, frame_id: "world"}, pose: {position: {x: 0.0, y: 2.0, z: 0.9}, orientation: {w:  0.707, x: 0.0, y: 0.707, z: 0}}}'
+rostopic pub -1 /move_arm geometry_msgs/PoseStamped '{header: {stamp: now, frame_id: "world"}, pose: {position: {x: 0.0, y: 3.3, z: 0.9}, orientation: {w:  0.707, x: 0.0, y: 0.707, z: 0}}}'
+
+
+#tray
+rostopic pub -1 /move_arm geometry_msgs/PoseStamped '{header: {stamp: now, frame_id: "world"}, pose: {position: {x: 0.3, y: 3.3, z: 0.9}, orientation: {w:  0.707, x: 0.0, y: 0.707, z: 0}}}'
+
+
+
+#NOTES:
+useful cartecian path planning
+https://github.com/ros-planning/moveit_tutorials/blob/indigo-devel/doc/pr2_tutorials/planning/src/move_group_interface_tutorial.cpp
+https://answers.ros.org/question/256803/moveit-problem-about-cartesian-paths-of-move_group_interface/
 

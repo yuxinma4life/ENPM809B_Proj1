@@ -48,6 +48,18 @@ void move_armCallback(const geometry_msgs::PoseStamped msg)
   
 }
 
+void generate_gripper_target()
+{
+  gripper_target.header.frame_id = "world";
+  gripper_target.pose.position.x = gripper_transform.getOrigin().x();
+  gripper_target.pose.position.y = gripper_transform.getOrigin().y();
+  gripper_target.pose.position.z = gripper_transform.getOrigin().z();
+  gripper_target.pose.orientation.w = 0.707;
+  gripper_target.pose.orientation.x = 0.0;
+  gripper_target.pose.orientation.y = 0.707;
+  gripper_target.pose.orientation.z = 0.0;
+}
+
 void grab(const std_msgs::Empty msg)
 {
 	grabbing = true;
@@ -70,17 +82,7 @@ void grab(const std_msgs::Empty msg)
 	
 }
 
-void generate_gripper_target()
-{
-  gripper_target.header.frame_id = "world";
-  gripper_target.pose.position.x = gripper_transform.getOrigin().x();
-  gripper_target.pose.position.y = gripper_transform.getOrigin().y();
-  gripper_target.pose.position.z = gripper_transform.getOrigin().z();
-  gripper_target.pose.orientation.w = 0.707;
-  gripper_target.pose.orientation.x = 0.0;
-  gripper_target.pose.orientation.y = 0.707;
-  gripper_target.pose.orientation.z = 0.0;
-}
+
 
 void gripper_callback(const osrf_gear::VacuumGripperState msg)
 {
@@ -116,7 +118,7 @@ int main(int argc, char **argv)
   
 
   
-  group->setGoalTolerance(0.04);
+  group->setGoalTolerance(0.005);
 
 
 

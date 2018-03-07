@@ -89,7 +89,8 @@ void generate_gripper_target_absolute(float x, float y, float z)
 
 void pne(float t, float stepSize)
 {
-	group->setMaxVelocityScalingFactor(0.001);
+	group->setMaxVelocityScalingFactor(1.0);
+	group->setMaxAccelerationScalingFactor(1.0);
 	group->setPlanningTime(t);
 
 	moveit_msgs::RobotTrajectory trajectory;
@@ -211,6 +212,73 @@ void to_bin_slot(int b, int s)
 	pne(15.0,0.01);
 }
 
+void move_to(float x, float y, float z){
+	tf::TransformListener listener;
+	listener.waitForTransform("/world","/tool0",ros::Time(0),ros::Duration(10.0));
+	listener.lookupTransform("/world","/tool0",ros::Time(0), gripper_transform);
+	
+	//REMOVE THIS!!!!!
+	srv.request.enable = true;
+	client.call(srv);
+	
+	ros::spinOnce();
+	waypoints.clear();
+	generate_gripper_target(0,0,0);
+	geometry_msgs::Pose target_pose3 = gripper_target.pose;
+	waypoints.push_back(target_pose3); 
+
+	//before moving in x,y, make sure z is above certain height
+	if(gripper_target.pose.position.z < 0.9){
+		target_pose3.position.z = 0.9;
+		waypoints.push_back(target_pose3);
+	}
+
+	if(gripper_target.pose.position.y < 1.5 && y > 1.5){
+		target_pose3.position.x = -0.1;
+		target_pose3.position.y = 1.5;
+		target_pose3.position.z = 0.9;
+		waypoints.push_back(target_pose3);
+
+		target_pose3.position.x = -0.1;
+		target_pose3.position.y = 2.5;
+		target_pose3.position.z = 0.9;
+		waypoints.push_back(target_pose3);
+
+	}
+
+	if(gripper_target.pose.position.y > 1.5 && y < 1.5){
+		target_pose3.position.x = -0.1;
+		target_pose3.position.y = 2.5;
+		target_pose3.position.z = 0.9;
+		waypoints.push_back(target_pose3);
+
+		target_pose3.position.x = -0.1;
+		target_pose3.position.y = 1.5;
+		target_pose3.position.z = 0.9;
+		waypoints.push_back(target_pose3);
+
+		target_pose3.position.x = -0.1;
+		target_pose3.position.y = 1.0;
+		target_pose3.position.z = 0.9;
+		waypoints.push_back(target_pose3);
+
+		
+
+	}
+
+
+	//maintain height before dropping to avoid tray edge collision
+	//if()
+
+	target_pose3.position.x = x;
+	target_pose3.position.y = y;
+	target_pose3.position.z = z;
+	waypoints.push_back(target_pose3);
+
+	pne(15.0,0.01);
+
+}
+
 void move_armCallback(const geometry_msgs::PoseStamped msg)
 {
 
@@ -323,7 +391,8 @@ void gripper_callback(const osrf_gear::VacuumGripperState msg)
 bool add(move_arm::Pick::Request  &req, move_arm::Pick::Response &res)
 {
   res.sum = 0;
-  ROS_INFO("%d",req.pose.position.x);
+  //ROS_INFO("%d",req.pose.position.x);
+  move_to(req.pose.position.x,req.pose.position.y,req.pose.position.z);
   return true;
 }
 

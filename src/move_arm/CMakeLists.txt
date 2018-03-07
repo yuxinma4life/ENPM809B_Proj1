@@ -30,14 +30,7 @@ find_package(catkin REQUIRED
 
 find_package(Boost REQUIRED system filesystem date_time thread)
 
-catkin_package(
-  CATKIN_DEPENDS
-    moveit_core
-    moveit_ros_planning_interface
-    interactive_markers
-  DEPENDS
-    EIGEN3
-)
+
 
 
 ## Uncomment this if the package has a setup.py. This macro ensures
@@ -77,11 +70,10 @@ catkin_package(
 # )
 
 ## Generate services in the 'srv' folder
-# add_service_files(
-#   FILES
-#   Service1.srv
-#   Service2.srv
-# )
+add_service_files(
+  FILES
+  Pick.srv
+)
 
 ## Generate actions in the 'action' folder
 # add_action_files(
@@ -91,10 +83,11 @@ catkin_package(
 # )
 
 ## Generate added messages and services with any dependencies listed here
-# generate_messages(
-#   DEPENDENCIES
-#   std_msgs  # Or other packages containing msgs
-# )
+generate_messages(
+  DEPENDENCIES
+  std_msgs  # Or other packages containing msgs
+  geometry_msgs
+)
 
 ################################################
 ## Declare ROS dynamic reconfigure parameters ##
@@ -126,12 +119,13 @@ catkin_package(
 ## CATKIN_DEPENDS: catkin_packages dependent projects also need
 ## DEPENDS: system dependencies of this project that dependent projects also need
 catkin_package(
-#  INCLUDE_DIRS include
-#  LIBRARIES move_arm
-#  CATKIN_DEPENDS other_catkin_pkg
-#  DEPENDS system_lib
+  CATKIN_DEPENDS
+    moveit_core
+    moveit_ros_planning_interface
+    interactive_markers
+  DEPENDS
+    EIGEN3
 )
-
 ###########
 ## Build ##
 ###########
@@ -174,7 +168,10 @@ link_directories(${catkin_LIBRARY_DIRS})
 # )
 
 add_executable(move_arm move_arm.cpp)
+add_executable(move_srv move_srv.cpp)
+add_dependencies( move_srv ${PROJECT_NAME}_generate_messages_cpp )
 target_link_libraries(move_arm ${catkin_LIBRARIES} ${Boost_LIBRARIES})
+target_link_libraries(move_srv ${catkin_LIBRARIES} ${Boost_LIBRARIES})
 install(TARGETS move_arm DESTINATION ${CATKIN_PACKAGE_BIN_DESTINATION})
 
 #############

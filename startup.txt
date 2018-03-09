@@ -47,7 +47,8 @@ rosservice call /move_arm/toPose "pose:
     x: 0.0
     y: 0.0
     z: 0.0
-    w: 0.0" 
+    w: 0.0
+mode: 1" 
 
 #service call to tray
 rosservice call /move_arm/toPose "pose:
@@ -59,7 +60,22 @@ rosservice call /move_arm/toPose "pose:
     x: 0.0
     y: 0.0
     z: 0.0
-    w: 0.0" 
+    w: 0.0
+mode: 2" 
+
+rosservice call /move_arm/toPose "pose:
+  position:
+    x: 0.0
+    y: 0.0
+    z: 0.0
+  orientation:
+    x: 0.0
+    y: 0.0
+    z: 0.0
+    w: 0.0
+mode: 0"
+
+
 
 
 

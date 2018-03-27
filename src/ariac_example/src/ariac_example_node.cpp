@@ -14,6 +14,8 @@
 
 // %Tag(FULLTEXT)%
 // %Tag(INCLUDE_STATEMENTS)%
+
+//#define _GLIBCXX_USE_CXX11_ABI 0
 #include <algorithm>
 #include <vector>
 
@@ -21,6 +23,8 @@
 
 #include <osrf_gear/LogicalCameraImage.h>
 #include <osrf_gear/Order.h>
+#include <osrf_gear/Kit.h>
+#include <osrf_gear/KitObject.h>
 #include <osrf_gear/Proximity.h>
 #include <sensor_msgs/JointState.h>
 #include <sensor_msgs/LaserScan.h>
@@ -29,8 +33,25 @@
 #include <std_msgs/String.h>
 #include <std_srvs/Trigger.h>
 #include <trajectory_msgs/JointTrajectory.h>
-// %EndTag(INCLUDE_STATEMENTS)%
 
+#include <osrf_gear/GetMaterialLocations.h>
+
+#include "include/PDDL_Edit.h"
+#include "include/part_structure.h"
+#include <stdio.h>
+#include <iostream>
+#include <fstream>
+#include <string>
+
+// %EndTag(INCLUDE_STATEMENTS)%
+bool hasOrder = false;
+std::vector<osrf_gear::Order> received_orders;
+int gear_count = 0;
+int rod_count = 2;
+
+void update_part_list(const std::string& project_name){
+
+}
 // %Tag(START_COMP)%
 /// Start the competition by waiting for and then calling the start ROS Service.
 void start_competition(ros::NodeHandle & node) {
@@ -40,11 +61,11 @@ void start_competition(ros::NodeHandle & node) {
   // If it's not already ready, wait for it to be ready.
   // Calling the Service using the client before the server is ready would fail.
   if (!start_client.exists()) {
-    ROS_INFO("Waiting for the competition to be ready...");
+    //ROS_INFO("Waiting for the competition to be ready...");
     start_client.waitForExistence();
-    ROS_INFO("Competition is now ready.");
+    //ROS_INFO("Competition is now ready.");
   }
-  ROS_INFO("Requesting competition start...");
+  //ROS_INFO("Requesting competition start...");
   std_srvs::Trigger srv;  // Combination of the "request" and the "response".
   start_client.call(srv);  // Call the start Service.
   if (!srv.response.success) {  // If not successful, print out why.
@@ -53,6 +74,85 @@ void start_competition(ros::NodeHandle & node) {
     ROS_INFO("Competition started!");
   }
 }
+
+
+
+
+void generate_pddl(ros::NodeHandle & node){
+  ros::ServiceClient client;
+  osrf_gear::GetMaterialLocations srv;
+  client = node.serviceClient<osrf_gear::GetMaterialLocations>("/ariac/material_locations");
+
+  //wait for order
+  while(!hasOrder){
+    sleep(0.1);
+    ros::spinOnce();
+  }
+  
+  for(osrf_gear::Order order_ : received_orders){
+    for(osrf_gear::Kit kit_: order_.kits){
+      for(osrf_gear::KitObject object_ : kit_.objects){
+        //ROS_INFO(object_.type.c_str());
+        srv.request.material_type = object_.type;
+        client.call(srv);
+        ros::spinOnce();
+        ROS_INFO("Need %s which can be found at %s", \
+        object_.type.c_str(), srv.response.storage_units.front().unit_id.c_str());
+        update_part_list(object_.type);
+      }
+    }
+  }
+
+
+  //ROS_INFO("%s",srv.response.storage_units.front().unit_id.c_str());
+  // initialize class update_PDDL
+  update_PDDL update;
+
+  // set project name
+  std::string project_name = "qual1aNEW";
+
+  // set output file name
+  std::string file_name = project_name + "-problem.pddl";
+
+  // initial all part types that will occur in this project
+  std::vector<std::string> part_types= {"gear", "rod", "pully"};
+
+  // set up initial part state (type and quantity) in bin
+  Part_Structure init_bin_gear("gear", 12);
+  Part_Structure init_bin_rod("rod", 12);
+
+  // push all initial bin part state (type and quantity) to vector
+  std::vector<Part_Structure> init_bin_part_list;
+  init_bin_part_list.push_back(init_bin_gear);
+  init_bin_part_list.push_back(init_bin_rod);
+
+  // set up initial part state (type and quantity)in tray
+  Part_Structure init_tray_gear("gear", 0);
+  Part_Structure init_tray_rod("rod", 0);
+
+  // push all initial tray part state (type and quantity) to vector
+  std::vector<Part_Structure> init_tray_part_list;
+  init_tray_part_list.push_back(init_tray_gear);
+  init_tray_part_list.push_back(init_tray_rod);
+
+
+  // set up goal part state (type and quantity) in tray
+  Part_Structure goal_gear("gear", gear_count);
+  Part_Structure goal_rod("rod", rod_count);
+
+  // push all goal tray part state (type and quantity) to vector
+  std::vector<Part_Structure> goal_part_list;
+  goal_part_list.push_back(goal_gear);
+  goal_part_list.push_back(goal_rod);
+
+  // call function to write all information to PDDL problem file for future planning
+   update.write_to_PDDL(project_name.c_str(), file_name.c_str(), part_types, init_bin_part_list,\
+       init_tray_part_list, goal_part_list);
+  
+  //update.define_set(project_name);
+}
+
+
 // %EndTag(START_COMP)%
 
 /// Example class that can hold state and provide methods that handle incoming data.
@@ -72,7 +172,7 @@ public:
   void current_score_callback(const std_msgs::Float32::ConstPtr & msg) {
     if (msg->data != current_score_)
     {
-      ROS_INFO_STREAM("Score: " << msg->data);
+      //ROS_INFO_STREAM("Score: " << msg->data);
     }
     current_score_ = msg->data;
   }
@@ -81,7 +181,7 @@ public:
   void competition_state_callback(const std_msgs::String::ConstPtr & msg) {
     if (msg->data == "done" && competition_state_ != "done")
     {
-      ROS_INFO("Competition ended.");
+      //ROS_INFO("Competition ended.");
     }
     competition_state_ = msg->data;
   }
@@ -90,6 +190,8 @@ public:
   void order_callback(const osrf_gear::Order::ConstPtr & order_msg) {
     ROS_INFO_STREAM("Received order:\n" << *order_msg);
     received_orders_.push_back(*order_msg);
+    received_orders.push_back(*order_msg);
+    hasOrder = true;
   }
 
   // %Tag(CB_CLASS)%
@@ -97,13 +199,13 @@ public:
   void joint_state_callback(
     const sensor_msgs::JointState::ConstPtr & joint_state_msg)
   {
-    ROS_INFO_STREAM_THROTTLE(10,
-      "Joint States (throttled to 0.1 Hz):\n" << *joint_state_msg);
+    //ROS_INFO_STREAM_THROTTLE(10,
+    //  "Joint States (throttled to 0.1 Hz):\n" << *joint_state_msg);
     // ROS_INFO_STREAM("Joint States:\n" << *joint_state_msg);
     current_joint_states_ = *joint_state_msg;
     if (!has_been_zeroed_) {
       has_been_zeroed_ = true;
-      ROS_INFO("Sending arm to zero joint positions...");
+      //ROS_INFO("Sending arm to zero joint positions...");
       send_arm_to_zero_state();
     }
   }
@@ -132,7 +234,7 @@ public:
     msg.points[0].positions.resize(msg.joint_names.size(), 0.0);
     // How long to take getting to the point (floating point seconds).
     msg.points[0].time_from_start = ros::Duration(0.001);
-    ROS_INFO_STREAM("Sending command:\n" << msg);
+    //ROS_INFO_STREAM("Sending command:\n" << msg);
     joint_trajectory_publisher_.publish(msg);
   }
   // %EndTag(ARM_ZERO)%
@@ -141,14 +243,14 @@ public:
   void logical_camera_callback(
     const osrf_gear::LogicalCameraImage::ConstPtr & image_msg)
   {
-    ROS_INFO_STREAM_THROTTLE(10,
-      "Logical camera: '" << image_msg->models.size() << "' objects.");
+    //ROS_INFO_STREAM_THROTTLE(10,
+     // "Logical camera: '" << image_msg->models.size() << "' objects.");
   }
 
   /// Called when a new Proximity message is received.
   void break_beam_callback(const osrf_gear::Proximity::ConstPtr & msg) {
     if (msg->object_detected) {  // If there is an object in proximity.
-      ROS_INFO("Break beam triggered.");
+      //ROS_INFO("Break beam triggered.");
     }
   }
 
@@ -163,16 +265,16 @@ private:
 
 void proximity_sensor_callback(const sensor_msgs::Range::ConstPtr & msg) {
   if ((msg->max_range - msg->range) > 0.01) {  // If there is an object in proximity.
-    ROS_INFO_THROTTLE(1, "Proximity sensor sees something.");
+    //ROS_INFO_THROTTLE(1, "Proximity sensor sees something.");
   }
 }
 
 void laser_profiler_callback(const sensor_msgs::LaserScan::ConstPtr & msg) {
-  size_t number_of_valid_ranges = std::count_if(
-    msg->ranges.begin(), msg->ranges.end(), std::isfinite<float>);
-  if (number_of_valid_ranges > 0) {
-    ROS_INFO_THROTTLE(1, "Laser profiler sees something.");
-  }
+  // size_t number_of_valid_ranges = std::count_if(
+  //   msg->ranges.begin(), msg->ranges.end(), std::isfinite<float>);
+  // if (number_of_valid_ranges > 0) {
+  //   //ROS_INFO_THROTTLE(1, "Laser profiler sees something.");
+  // }
 }
 
 // %Tag(MAIN)%
@@ -229,6 +331,7 @@ int main(int argc, char ** argv) {
 
   ROS_INFO("Setup complete.");
   start_competition(node);
+  generate_pddl(node);
   ros::spin();  // This executes callbacks on new data until ctrl-c.
 
   return 0;

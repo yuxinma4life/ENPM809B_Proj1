@@ -2,6 +2,8 @@ source ~/helloworld_ws/devel/setup.bash
 
 rosrun osrf_gear gear.py -f `catkin_find --share osrf_gear`/config/comp_conf1.yaml /home/yuxin/helloworld_ws/src/ariac_example/config/sample_gear_conf.yaml 
 
+rosrun osrf_gear gear.py -f `catkin_find --share osrf_gear`/config/qual2a.yaml ~/helloworld_ws/src/ariac_example/config/team_conf.yaml
+
 
 source ~/helloworld_ws/install/setup.bash
 roslaunch ur10_moveit_config ur10_moveit_planning_execution.launch sim:=true

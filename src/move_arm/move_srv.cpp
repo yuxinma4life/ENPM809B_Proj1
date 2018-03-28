@@ -21,10 +21,6 @@
 
 #include <vector>
 
-
-
-
-
 tf::StampedTransform gripper_transform;
 tf::StampedTransform tray_transform;
 geometry_msgs::PoseStamped gripper_target;
@@ -38,16 +34,6 @@ float duration_time_ = 0.2;
 sensor_msgs::JointState current_joint_states_;
 trajectory_msgs::JointTrajectory msg;
 
-
-
-/*
-This mode takes in object world locations and moves the manipulator to that location
-
-rostopic pub -1 /move_arm geometry_msgs/PoseStamped '{header: {stamp: now, frame_id: "world"}, 
-pose: {position: {x: -0.3, y: 0.43, z: 0.9}, orientation: {w:  0.707, x: 0.0, y: 0.707, z: 0}}}'
-
-
-*/
 
 
 moveit::planning_interface::MoveGroupInterface *group;
@@ -75,9 +61,9 @@ void start_competition(ros::NodeHandle & node) {
   std_srvs::Trigger srv;  // Combination of the "request" and the "response".
   start_client.call(srv);  // Call the start Service.
   if (!srv.response.success) {  // If not successful, print out why.
-	ROS_ERROR_STREAM("Failed to start the competition: " << srv.response.message);
+  	ROS_ERROR_STREAM("Failed to start the competition: " << srv.response.message);
   } else {
-	ROS_INFO("Competition started!");
+  	ROS_INFO("Competition started!");
   }
 }
 
@@ -94,10 +80,7 @@ void generate_gripper_target(float dx, float dy, float dz)
 	gripper_target.pose.orientation.z = 0.0;
 }
 
-void generate_gripper_target_absolute(float x, float y, float z)
-{
 
-}
 
 void pne(float t, float stepSize)
 {
@@ -120,109 +103,8 @@ void pne(float t, float stepSize)
 	group->execute(my_plan);
 }
 
-void pick()
-{
-	tf::TransformListener listener;
-	listener.waitForTransform("/world","/tool0",ros::Time(0),ros::Duration(10.0));
-	listener.lookupTransform("/world","/tool0",ros::Time(0), gripper_transform);
-	srv.request.enable = true;
-	client.call(srv);
-	ros::spinOnce();
-	waypoints.clear();
 
-	generate_gripper_target(0,0,0);
-	geometry_msgs::Pose target_pose3 = gripper_target.pose;
-	waypoints.push_back(target_pose3); 
 
-	target_pose3.position.z = 0.745;
-	waypoints.push_back(target_pose3); 
-	group->setMaxVelocityScalingFactor(0.00001);
-	pne(15.0,0.001);
-
-	int i = 0;
-	while(!attached){
-		ros::spinOnce();
-		ROS_INFO("waiting to attach");
-		sleep(0.1);
-		i++;
-		if(i>100) break;
-	}
-
-	listener;
-	listener.waitForTransform("/world","/tool0",ros::Time(0),ros::Duration(10.0));
-	listener.lookupTransform("/world","/tool0",ros::Time(0), gripper_transform);
-
-	ros::spinOnce();
-	waypoints.clear();
-
-	generate_gripper_target(0,0,0);
-	target_pose3 = gripper_target.pose;
-	waypoints.push_back(target_pose3); 
-
-	target_pose3.position.z = 0.9;
-	waypoints.push_back(target_pose3); 
-	group->setMaxVelocityScalingFactor(0.00001);
-	pne(15.0,0.1);
-
-}
-
-//geometry_msgs::PoseStamped offset
-void to_robot(float x, float y)
-{
-	tf::TransformListener listener;
-	listener.waitForTransform("/world","/tool0",ros::Time(0),ros::Duration(10.0));
-	listener.lookupTransform("/world","/tool0",ros::Time(0), gripper_transform);
-	listener.waitForTransform("/world","/agv1_load_point_frame",ros::Time(0),ros::Duration(10.0));
-	listener.lookupTransform("/world","/agv1_load_point_frame",ros::Time(0), tray_transform);
-
-	waypoints.clear();
-	generate_gripper_target(0,0,0);
-	geometry_msgs::Pose target_pose3 = gripper_target.pose;
-	waypoints.push_back(target_pose3); 
-
-	target_pose3.position.x = -0.1;
-	target_pose3.position.y = 2.5;
-	target_pose3.position.z = 0.9;
-	waypoints.push_back(target_pose3); //parking
-	target_pose3.position.x = tray_transform.getOrigin().x()+ x;
-	target_pose3.position.y = tray_transform.getOrigin().y() + y;
-	target_pose3.position.z = 0.9;
-	waypoints.push_back(target_pose3);  // left
-
-	pne(15.0,0.1);
-
-}
-
-void to_bin_slot(int b, int s)
-{
-	tf::TransformListener listener;
-	listener.waitForTransform("/world","/tool0",ros::Time(0),ros::Duration(10.0));
-	listener.lookupTransform("/world","/tool0",ros::Time(0), gripper_transform);
-	srv.request.enable = true;
-	client.call(srv);
-	ros::spinOnce();
-	waypoints.clear();
-	generate_gripper_target(0,0,0);
-	geometry_msgs::Pose target_pose3 = gripper_target.pose;
-	waypoints.push_back(target_pose3); 
-
-	switch(b){
-		case 7: target_pose3.position.x = -0.1;
-		target_pose3.position.y = 0.43;
-		target_pose3.position.z = 0.9;
-		waypoints.push_back(target_pose3);
-		ROS_INFO("going to bin %d", b);
-		break;
-		case 6:
-		target_pose3.position.x = -0.1;
-		target_pose3.position.y = -0.335;
-		target_pose3.position.z = 0.9;
-		waypoints.push_back(target_pose3);
-		ROS_INFO("going to bin %d", b);
-		break;
-	}
-	pne(15.0,0.01);
-}
 
 
 
@@ -249,13 +131,35 @@ void check_stable(float tolerance)
 		if(i>1000){
 			isStable = true;
 		}
-		//ROS_INFO_STREAM("waiting for stable"<<current_joint_states_);
+		ROS_INFO_STREAM("waiting for stable"<<current_joint_states_);
 		ros::Duration(0.1).sleep();
 	}
-	ROS_INFO_STREAM("done waiting"<<current_joint_states_);
-	ROS_INFO_STREAM("final i: "<<i);
+	//ROS_INFO_STREAM("done waiting"<<current_joint_states_);
+	//ROS_INFO_STREAM("final i: "<<i);
 
 }
+
+void move_joints(float p0, float p1, float p2, float p3, float p4, float p5, float p6, float duration){
+		msg.joint_names.clear();
+		msg.joint_names.push_back("elbow_joint");
+		msg.joint_names.push_back("linear_arm_actuator_joint");
+		msg.joint_names.push_back("shoulder_lift_joint");
+		msg.joint_names.push_back("shoulder_pan_joint");
+		msg.joint_names.push_back("wrist_1_joint");
+		msg.joint_names.push_back("wrist_2_joint");
+		msg.joint_names.push_back("wrist_3_joint");
+
+		msg.points.resize(1);
+		msg.points[0].positions = {p0, p1, p2, p3, p4, p5, p6};
+		// How long to take getting to the point (floating point seconds).
+		msg.points[0].time_from_start = ros::Duration(duration);
+		msg.header.stamp = ros::Time::now() + ros::Duration();
+		//ROS_INFO_STREAM("Sending command:\n" << msg);
+		joint_trajectory_publisher_.publish(msg);
+		ros::spinOnce();
+}
+
+
 
 void move_to(float x, float y, float z){
 	tf::TransformListener listener;
@@ -281,124 +185,73 @@ void move_to(float x, float y, float z){
 		ros::spinOnce();
 	}
 
-	
-
-
-
-
-
 	if(gripper_target.pose.position.y < 1.5 && y > 1.5){
 
 			 // Create a message to send.
-
-
-		// Fill the names of the joints to be controlled.
-		// Note that the vacuum_gripper_joint is not controllable.
-		msg.joint_names.clear();
-		msg.joint_names.push_back("elbow_joint");
-		msg.joint_names.push_back("linear_arm_actuator_joint");
-		msg.joint_names.push_back("shoulder_lift_joint");
-		msg.joint_names.push_back("shoulder_pan_joint");
-		msg.joint_names.push_back("wrist_1_joint");
-		msg.joint_names.push_back("wrist_2_joint");
-		msg.joint_names.push_back("wrist_3_joint");
-		// Create one point in the trajectory.
-		msg.points.resize(1);
-		// Resize the vector to the same length as the joint names.
-		// Values are initialized to 0.
-		//msg.points[0].positions = {1.76, 0.48, -0.47, 3.23,3.58,-1.51,0.0};
-
-		msg.points[0].positions = {current_joint_states_.position[0], 
-			-0.5, 
+		move_joints(current_joint_states_.position[0], 
+			0, 
 			current_joint_states_.position[2], 
 			1.57,
 			current_joint_states_.position[4],
 			current_joint_states_.position[5],
-			current_joint_states_.position[6]};
-		// How long to take getting to the point (floating point seconds).
-			msg.points[0].time_from_start = ros::Duration(duration_time_);
-			msg.header.stamp = ros::Time::now() + ros::Duration();
-		//ROS_INFO_STREAM("Sending command:\n" << msg);
-			joint_trajectory_publisher_.publish(msg);
+			current_joint_states_.position[6],
+			0.3);
 
-			while(!(1.55< current_joint_states_.position[3] && 1.59> current_joint_states_.position[3])){
+		while(!(1.55< current_joint_states_.position[3] && 1.59> current_joint_states_.position[3])){
 			//ROS_INFO("waitinf for arm move");
 				ros::spinOnce();
-			}
+		}
 
 
-			ros::spinOnce();
-			msg.joint_names.clear();
-			msg.joint_names.push_back("elbow_joint");
-			msg.joint_names.push_back("linear_arm_actuator_joint");
-			msg.joint_names.push_back("shoulder_lift_joint");
-			msg.joint_names.push_back("shoulder_pan_joint");
-			msg.joint_names.push_back("wrist_1_joint");
-			msg.joint_names.push_back("wrist_2_joint");
-			msg.joint_names.push_back("wrist_3_joint");
-		// Create one point in the trajectory.
-			msg.points.resize(1);
-		// Resize the vector to the same length as the joint names.
-		// Values are initialized to 0.
-		//msg.points[0].positions = {1.76, 0.48, -0.47, 3.23,3.58,-1.51,0.0};
+		move_joints(current_joint_states_.position[0], 
+			1.7, 
+			current_joint_states_.position[2], 
+			current_joint_states_.position[3],
+			current_joint_states_.position[4],
+			current_joint_states_.position[5],
+			current_joint_states_.position[6],
+			0.3);
 
-			msg.points[0].positions = {current_joint_states_.position[0], 
-				1.7, 
+			
+		check_stable(0.05);
+	}
+
+
+			if(gripper_target.pose.position.y > 1.5 && y < 1.5)
+			{
+				move_joints(current_joint_states_.position[0], 
+				0, 
 				current_joint_states_.position[2], 
 				current_joint_states_.position[3],
 				current_joint_states_.position[4],
 				current_joint_states_.position[5],
-				current_joint_states_.position[6]};
-		// How long to take getting to the point (floating point seconds).
-				msg.points[0].time_from_start = ros::Duration(duration_time_);
-				msg.header.stamp = ros::Time::now() + ros::Duration();
-		//ROS_INFO_STREAM("Sending command:\n" << msg);
-				joint_trajectory_publisher_.publish(msg);
-				while(!(1.55< current_joint_states_.position[3] && 1.59> current_joint_states_.position[3])){
-			ROS_INFO("waiting for arm move");
-					ros::spinOnce();
-				}
-				check_stable(0.05);
-			}
-			if(gripper_target.pose.position.y > 1.5 && y < 1.5)
-			{
-				ros::spinOnce();
-				msg.joint_names.clear();
-				msg.joint_names.push_back("elbow_joint");
-				msg.joint_names.push_back("linear_arm_actuator_joint");
-				msg.joint_names.push_back("shoulder_lift_joint");
-				msg.joint_names.push_back("shoulder_pan_joint");
-				msg.joint_names.push_back("wrist_1_joint");
-				msg.joint_names.push_back("wrist_2_joint");
-				msg.joint_names.push_back("wrist_3_joint");
-		// Create one point in the trajectory.
-				msg.points.resize(1);
-		// Resize the vector to the same length as the joint names.
-		// Values are initialized to 0.
-		//msg.points[0].positions = {1.76, 0.48, -0.47, 3.23,3.58,-1.51,0.0};
+				current_joint_states_.position[6],
+				0.3);
 
-				msg.points[0].positions = {current_joint_states_.position[0], 
-					-0.5, 
-					current_joint_states_.position[2], 
-					current_joint_states_.position[3],
-					current_joint_states_.position[4],
-					current_joint_states_.position[5],
-					current_joint_states_.position[6]};
-		// How long to take getting to the point (floating point seconds).
-					msg.points[0].time_from_start = ros::Duration(duration_time_);
-					msg.header.stamp = ros::Time::now() + ros::Duration();
-		//ROS_INFO_STREAM("Sending command:\n" << msg);
-					joint_trajectory_publisher_.publish(msg);
-					while(!(1.55< current_joint_states_.position[3] && 1.59> current_joint_states_.position[3])){
-			//ROS_INFO("waitinf for arm move");
-						ros::spinOnce();
-					}
+				while(current_joint_states_.position[1]>0.5){
+				ROS_INFO("waitinf for arm move");
+				ros::spinOnce();
+				}
+				
+				
 					check_stable(0.05);
 
-				}
+				move_joints(current_joint_states_.position[0], 
+				0, 
+				current_joint_states_.position[2], 
+				3.14,
+				current_joint_states_.position[4],
+				current_joint_states_.position[5],
+				current_joint_states_.position[6],
+				0.3);
+				
+				
+					check_stable(0.01);
+
+			}
 
 
-
+				ros::spinOnce();
 
 				listener.waitForTransform("/world","/tool0",ros::Time(0),ros::Duration(10.0));
 				listener.lookupTransform("/world","/tool0",ros::Time(0), gripper_transform);
@@ -426,170 +279,145 @@ void move_to(float x, float y, float z){
 				pne(15.0,0.01);
 
 
+	}
+
+
+
+
+
+
+	void gripper_callback(const osrf_gear::VacuumGripperState msg)
+			{
+				enabled = msg.enabled;
+				attached = msg.attached;
+
+	}
+
+	bool check_release(float x, float y, float tolerance){
+				tf::TransformListener listener;
+				listener.waitForTransform("/world","/tool0",ros::Time(0),ros::Duration(10.0));
+				listener.lookupTransform("/world","/tool0",ros::Time(0), gripper_transform);
+				ros::spinOnce();
+				x = std::abs(gripper_transform.getOrigin().x() - x);
+				y = std::abs(gripper_transform.getOrigin().y() - y);
+				if(x <= tolerance && y <= tolerance){
+					return true;
+				}
+
+				return false;
+
 			}
 
+	bool add(move_arm::Pick::Request  &req, move_arm::Pick::Response &res)
+	{
 
-
-
-
-void grab(const std_msgs::Empty msg)
-{
-	grabbing = true;
-	ROS_INFO_STREAM("grabbing");
-	ROS_INFO_STREAM("location x: " << gripper_transform.getOrigin().x());
-	ROS_INFO_STREAM("location y: " << gripper_transform.getOrigin().y());
-	ROS_INFO_STREAM("location z: " << gripper_transform.getOrigin().z());
-	generate_gripper_target(0,0,0);
-	gripper_target.pose.position.z = gripper_transform.getOrigin().z()-0.01;
-	srv.request.enable = true;
-	client.call(srv);
-	
-
-	moveit::planning_interface::MoveGroup::Plan my_plan;
-	group->setPlanningTime(1.0);
-	group->setPoseTarget(gripper_target);
-	if(group->plan(my_plan))  group->move();
-	
-
-	
-}
-
-
-
-void gripper_callback(const osrf_gear::VacuumGripperState msg)
-{
-	enabled = msg.enabled;
-	attached = msg.attached;
-	
-}
-
-bool check_release(float x, float y, float tolerance){
-	tf::TransformListener listener;
-	listener.waitForTransform("/world","/tool0",ros::Time(0),ros::Duration(10.0));
-	listener.lookupTransform("/world","/tool0",ros::Time(0), gripper_transform);
-	ros::spinOnce();
-	x = std::abs(gripper_transform.getOrigin().x() - x);
-	y = std::abs(gripper_transform.getOrigin().y() - y);
-	if(x <= tolerance && y <= tolerance){
-		return true;
-	}
-
-	return false;
-
-}
-
-bool add(move_arm::Pick::Request  &req, move_arm::Pick::Response &res)
-{
-	
-	res.sum = 0;
+				res.sum = 0;
   //ROS_INFO("%d",req.pose.position.x);
-	if(req.mode == 1){
-		srv.request.enable = true;
-		client.call(srv);
-	
-		ros::spinOnce();
-		move_to(req.pose.position.x,req.pose.position.y,req.pose.position.z);
-	}
+				if(req.mode == 1){
+					srv.request.enable = true;
+					client.call(srv);
 
-	
-	if(req.mode == 2){
-		move_to(req.pose.position.x,req.pose.position.y,req.pose.position.z);
-		
-		
-		while(!check_release(req.pose.position.x,req.pose.position.y, 0.02f )){
-			ROS_INFO("waiting for arm to arrive");
-		}
+					ros::spinOnce();
+					move_to(req.pose.position.x,req.pose.position.y,req.pose.position.z);
+				}
 
-		srv.request.enable = false;
-		ROS_INFO("calling gripper release service");
-		client.call(srv);
-		
-		ros::spinOnce();
 
-	}
+				if(req.mode == 2){
+					move_to(req.pose.position.x,req.pose.position.y,req.pose.position.z);
 
-	
-	return true;
-}
 
-void send_arm_to_zero_state() {
+					while(!check_release(req.pose.position.x,req.pose.position.y, 0.02f )){
+						ROS_INFO("waiting for arm to arrive");
+					}
+
+					srv.request.enable = false;
+					ROS_INFO("calling gripper release service");
+					client.call(srv);
+
+					ros::spinOnce();
+
+				}
+
+
+				return true;
+			}
+
+			void send_arm_to_zero_state() {
 		// Create a message to send.
-	trajectory_msgs::JointTrajectory msg;
+				trajectory_msgs::JointTrajectory msg;
 
 		// Fill the names of the joints to be controlled.
 		// Note that the vacuum_gripper_joint is not controllable.
-	msg.joint_names.clear();
-	msg.joint_names.push_back("elbow_joint");
-	msg.joint_names.push_back("linear_arm_actuator_joint");
-	msg.joint_names.push_back("shoulder_lift_joint");
-	msg.joint_names.push_back("shoulder_pan_joint");
-	msg.joint_names.push_back("wrist_1_joint");
-	msg.joint_names.push_back("wrist_2_joint");
-	msg.joint_names.push_back("wrist_3_joint");
+				msg.joint_names.clear();
+				msg.joint_names.push_back("elbow_joint");
+				msg.joint_names.push_back("linear_arm_actuator_joint");
+				msg.joint_names.push_back("shoulder_lift_joint");
+				msg.joint_names.push_back("shoulder_pan_joint");
+				msg.joint_names.push_back("wrist_1_joint");
+				msg.joint_names.push_back("wrist_2_joint");
+				msg.joint_names.push_back("wrist_3_joint");
 		// Create one point in the trajectory.
-	msg.points.resize(1);
+				msg.points.resize(1);
 		// Resize the vector to the same length as the joint names.
 		// Values are initialized to 0.
 		//msg.points[0].positions = {1.76, 0.48, -0.47, 3.23,3.58,-1.51,0.0};
-	msg.points[0].positions = {1.56, 0.48, -1.13, 3.14,3.58,-1.51,0.0};
+				msg.points[0].positions = {1.56, 0.48, -1.13, 3.14,3.58,-1.51,0.0};
 		// How long to take getting to the point (floating point seconds).
-	msg.points[0].time_from_start = ros::Duration(duration_time_);
-	msg.header.stamp = ros::Time::now() + ros::Duration();
-	ROS_INFO_STREAM("Sending command:\n" << msg);
-	joint_trajectory_publisher_.publish(msg);
-}
+				msg.points[0].time_from_start = ros::Duration(duration_time_);
+				msg.header.stamp = ros::Time::now() + ros::Duration();
+				ROS_INFO_STREAM("Sending command:\n" << msg);
+				joint_trajectory_publisher_.publish(msg);
+			}
 
  /// Called when a new JointState message is received.
-void joint_state_callback(
-	const sensor_msgs::JointState::ConstPtr & joint_state_msg)
-{
+			void joint_state_callback(
+				const sensor_msgs::JointState::ConstPtr & joint_state_msg)
+			{
 
-	current_joint_states_ = *joint_state_msg;
+				current_joint_states_ = *joint_state_msg;
 
-}
-
-
-int main(int argc, char **argv)
-{
-	ros::init(argc, argv, "move_arm");
-	ros:: NodeHandle n;
-	tf::TransformListener listener;
-	client = n.serviceClient<osrf_gear::VacuumGripperControl>("/ariac/gripper/control");
+			}
 
 
-	group = new moveit::planning_interface::MoveGroupInterface("manipulator");
-	group->startStateMonitor();
-  //subscribe to /move_arm which is a PoseStamped msg
-	ros::Subscriber grab_sub = n.subscribe("grab",1000, grab);
-	ros::Subscriber gripper_sub = n.subscribe("ariac/gripper/state", 1000, gripper_callback);
-	ros::Subscriber joint_state_subscriber = n.subscribe("/ariac/joint_states", 10,joint_state_callback);
+			int main(int argc, char **argv)
+			{
+				ros::init(argc, argv, "move_arm");
+				ros:: NodeHandle n;
+				tf::TransformListener listener;
+				client = n.serviceClient<osrf_gear::VacuumGripperControl>("/ariac/gripper/control");
+
+
+				group = new moveit::planning_interface::MoveGroupInterface("manipulator");
+				group->startStateMonitor();
+				ros::Subscriber gripper_sub = n.subscribe("ariac/gripper/state", 1000, gripper_callback);
+				ros::Subscriber joint_state_subscriber = n.subscribe("/ariac/joint_states", 10,joint_state_callback);
 
 
 
-	start_competition(n);
+				start_competition(n);
 
-	group->setGoalTolerance(0.02);
+				group->setGoalTolerance(0.02);
 
-	ros::ServiceServer service = n.advertiseService("/move_arm/toPose", add);
+				ros::ServiceServer service = n.advertiseService("/move_arm/toPose", add);
 
-	joint_trajectory_publisher_ = n.advertise<trajectory_msgs::JointTrajectory>(
-		"/ariac/arm/command", 10);
+				joint_trajectory_publisher_ = n.advertise<trajectory_msgs::JointTrajectory>(
+					"/ariac/arm/command", 10);
 
 
    //keep looping
-	ros::Rate loop_rate(100);
-	while (ros::ok())
-	{
-		listener.waitForTransform("/world","/vacuum_gripper_link",ros::Time(0),ros::Duration(10.0));
-		listener.lookupTransform("/world","/vacuum_gripper_link",ros::Time(0), gripper_transform);
+				ros::Rate loop_rate(100);
+				while (ros::ok())
+				{
+					listener.waitForTransform("/world","/vacuum_gripper_link",ros::Time(0),ros::Duration(10.0));
+					listener.lookupTransform("/world","/vacuum_gripper_link",ros::Time(0), gripper_transform);
 
 
-		ros::spinOnce();
-		loop_rate.sleep();
+					ros::spinOnce();
+					loop_rate.sleep();
 
 
-	}
-}
+				}
+			}
 
 
 

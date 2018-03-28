@@ -42,8 +42,8 @@ rostopic pub -1 /move_arm geometry_msgs/PoseStamped '{header: {stamp: now, frame
 #service call to part
 rosservice call /move_arm/toPose "pose:
   position:
-    x: -0.1
-    y: 0.43
+    x: -0.2
+    y: 0.33
     z: 0.745
   orientation:
     x: 0.0
@@ -77,6 +77,19 @@ rosservice call /move_arm/toPose "pose:
     w: 0.0
 mode: 0"
 
+
+#service call to tray
+rosservice call /move_arm/toPose "pose:
+  position:
+    x: 0.4
+    y: 3.1
+    z: 0.8
+  orientation:
+    x: 0.0
+    y: 0.0
+    z: 0.0
+    w: 0.0
+mode: 2" 
 
 
 

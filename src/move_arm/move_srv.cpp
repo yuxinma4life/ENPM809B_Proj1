@@ -39,6 +39,7 @@ sensor_msgs::JointState current_joint_states_;
 trajectory_msgs::JointTrajectory msg;
 
 
+
 /*
 This mode takes in object world locations and moves the manipulator to that location
 
@@ -56,6 +57,7 @@ ros::ServiceClient client;
 bool grabbing = false;
 bool enabled = false;
 bool attached = false;
+bool moveComplete = true;
 
 
 /// Start the competition by waiting for and then calling the start ROS Service.
@@ -233,13 +235,13 @@ void check_stable(float tolerance)
 	while(!isStable){
 		isStable = true;
 		ros::spinOnce();
-		for(int j = 0; j<7; j++){
+		for(int j = 0; j<6; j++){
 			// if(!(msg.points[0].positions[j]+tolerance > current_joint_states_.position[0] && msg.points[0].positions[j]-tolerance < current_joint_states_.position[0])){
 			// 	isStable = false;
 			// 	//ROS_INFO("position OK");
 			// }
 			if(std::abs(current_joint_states_.velocity[j]) > tolerance){
-				//ROS_INFO("speed ok");
+				ROS_INFO("speed  not ok: %d : %d",j,current_joint_states_.velocity[j]);
 				isStable = false;
 			}
 			
@@ -248,7 +250,7 @@ void check_stable(float tolerance)
 		if(i>1000){
 			isStable = true;
 		}
-		ROS_INFO_STREAM("waiting for stable"<<current_joint_states_);
+		//ROS_INFO_STREAM("waiting for stable"<<current_joint_states_);
 		ros::Duration(0.1).sleep();
 	}
 	ROS_INFO_STREAM("done waiting"<<current_joint_states_);
@@ -257,13 +259,14 @@ void check_stable(float tolerance)
 }
 
 void move_to(float x, float y, float z){
+	moveComplete = false;
 	tf::TransformListener listener;
 	listener.waitForTransform("/world","/tool0",ros::Time(0),ros::Duration(10.0));
 	listener.lookupTransform("/world","/tool0",ros::Time(0), gripper_transform);
 	
 	//REMOVE THIS!!!!!
-	srv.request.enable = true;
-	client.call(srv);
+	// srv.request.enable = true;
+	// client.call(srv);
 	
 	ros::spinOnce();
 	waypoints.clear();
@@ -276,10 +279,11 @@ void move_to(float x, float y, float z){
 	if(gripper_target.pose.position.z < safeHeight){
 		target_pose3.position.z = safeHeight;
 		waypoints.push_back(target_pose3);
+		pne(15.0,0.01);
+		ros::spinOnce();
 	}
 
-	pne(15.0,0.01);
-	ros::spinOnce();
+	
 
 
 
@@ -353,10 +357,10 @@ void move_to(float x, float y, float z){
 		//ROS_INFO_STREAM("Sending command:\n" << msg);
 				joint_trajectory_publisher_.publish(msg);
 				while(!(1.55< current_joint_states_.position[3] && 1.59> current_joint_states_.position[3])){
-			//ROS_INFO("waitinf for arm move");
+			ROS_INFO("waiting for arm move");
 					ros::spinOnce();
 				}
-				check_stable(0.1);
+				check_stable(0.05);
 			}
 			if(gripper_target.pose.position.y > 1.5 && y < 1.5)
 			{
@@ -391,7 +395,7 @@ void move_to(float x, float y, float z){
 			//ROS_INFO("waitinf for arm move");
 						ros::spinOnce();
 					}
-					check_stable(0.1);
+					check_stable(0.05);
 
 				}
 
@@ -423,7 +427,8 @@ void move_to(float x, float y, float z){
 
 				pne(15.0,0.01);
 
-
+				moveComplete = true;
+				ROS_INFO("Move Arm Complete");
 
 
 			}
@@ -502,6 +507,8 @@ void move_to(float x, float y, float z){
 	waypoints.push_back(target_pose3); //parking near bin 6
 	pne(15.0,0.1);
 
+
+
 }
 
 
@@ -546,13 +553,18 @@ bool add(move_arm::Pick::Request  &req, move_arm::Pick::Response &res)
 		client.call(srv);
 	
 		ros::spinOnce();
-
+		move_to(req.pose.position.x,req.pose.position.y,req.pose.position.z);
 	}
-	move_to(req.pose.position.x,req.pose.position.y,req.pose.position.z);
-	if(req.mode == 2){
-		srv.request.enable = false;
-		client.call(srv);
+
 	
+	if(req.mode == 2){
+		move_to(req.pose.position.x,req.pose.position.y,req.pose.position.z);
+		
+		//check_stable(0.05);
+		srv.request.enable = false;
+		ROS_INFO("calling gripper release service");
+		//client.call(srv);
+		
 		ros::spinOnce();
 
 	}

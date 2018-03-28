@@ -1,4 +1,0 @@
-geometry_msgs/Pose pose
-int64 mode
----
-int64 sum

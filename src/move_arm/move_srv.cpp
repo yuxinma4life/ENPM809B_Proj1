@@ -57,7 +57,6 @@ ros::ServiceClient client;
 bool grabbing = false;
 bool enabled = false;
 bool attached = false;
-bool moveComplete = true;
 
 
 /// Start the competition by waiting for and then calling the start ROS Service.
@@ -259,7 +258,6 @@ void check_stable(float tolerance)
 }
 
 void move_to(float x, float y, float z){
-	moveComplete = false;
 	tf::TransformListener listener;
 	listener.waitForTransform("/world","/tool0",ros::Time(0),ros::Duration(10.0));
 	listener.lookupTransform("/world","/tool0",ros::Time(0), gripper_transform);
@@ -427,89 +425,10 @@ void move_to(float x, float y, float z){
 
 				pne(15.0,0.01);
 
-				moveComplete = true;
-				ROS_INFO("Move Arm Complete");
-
 
 			}
 
-			void move_armCallback(const geometry_msgs::PoseStamped msg)
-			{
 
-				geometry_msgs::Pose drop_location;
-
-				tf::TransformListener listener;
-
-				to_bin_slot(7,1);
-
-				pick();
-
-				to_robot(0.1,0);
-				ros::spinOnce();
-				srv.request.enable = false;;
-				client.call(srv); //release
-
-				
-	//go back
-				listener.waitForTransform("/world","/tool0",ros::Time(0),ros::Duration(10.0));
-				listener.lookupTransform("/world","/tool0",ros::Time(0), gripper_transform);
-				waypoints.clear();
-				generate_gripper_target(0,0,0);
-				target_pose3 = gripper_target.pose;
-				waypoints.push_back(target_pose3); 
-				target_pose3.position.z = 0.9;
-				waypoints.push_back(target_pose3);
-
-				target_pose3.position.x = -0.1;
-				target_pose3.position.y = 3.2;
-				target_pose3.position.z = 0.9;
-	waypoints.push_back(target_pose3); //parking
-
-	target_pose3.position.x = -0.1;
-	target_pose3.position.y = 0.23;
-	target_pose3.position.z = 0.9;
-	waypoints.push_back(target_pose3); //parking near bin 6
-	pne(15.0,0.1);
-
-	//pick up 2nd part
-	to_bin_slot(6,1);
-
-	
-
-	pick();
-
-
-	to_robot(-0.1, 0);
-	ros::spinOnce();
-	srv.request.enable = false;;
-	client.call(srv); //release
-
-
-	//go back
-	listener.waitForTransform("/world","/tool0",ros::Time(0),ros::Duration(10.0));
-	listener.lookupTransform("/world","/tool0",ros::Time(0), gripper_transform);
-	ros::spinOnce();
-	waypoints.clear();
-	generate_gripper_target(0,0,0);
-	target_pose3 = gripper_target.pose;
-	waypoints.push_back(target_pose3); 
-	target_pose3.position.z = 0.9;
-	waypoints.push_back(target_pose3);
-
-	target_pose3.position.x = -0.1;
-	target_pose3.position.y = 3.2;
-	target_pose3.position.z = 0.9;
-	waypoints.push_back(target_pose3); //parking
-
-	target_pose3.position.x = -0.1;
-	target_pose3.position.y = 0.23;
-	target_pose3.position.z = 0.9;
-	waypoints.push_back(target_pose3); //parking near bin 6
-	pne(15.0,0.1);
-
-
-
-}
 
 
 
@@ -544,8 +463,24 @@ void gripper_callback(const osrf_gear::VacuumGripperState msg)
 	
 }
 
+bool check_release(float x, float y, float tolerance){
+	tf::TransformListener listener;
+	listener.waitForTransform("/world","/tool0",ros::Time(0),ros::Duration(10.0));
+	listener.lookupTransform("/world","/tool0",ros::Time(0), gripper_transform);
+	ros::spinOnce();
+	x = std::abs(gripper_transform.getOrigin().x() - x);
+	y = std::abs(gripper_transform.getOrigin().y() - y);
+	if(x <= tolerance && y <= tolerance){
+		return true;
+	}
+
+	return false;
+
+}
+
 bool add(move_arm::Pick::Request  &req, move_arm::Pick::Response &res)
 {
+	
 	res.sum = 0;
   //ROS_INFO("%d",req.pose.position.x);
 	if(req.mode == 1){
@@ -560,10 +495,14 @@ bool add(move_arm::Pick::Request  &req, move_arm::Pick::Response &res)
 	if(req.mode == 2){
 		move_to(req.pose.position.x,req.pose.position.y,req.pose.position.z);
 		
-		//check_stable(0.05);
+		
+		while(!check_release(req.pose.position.x,req.pose.position.y, 0.02f )){
+			ROS_INFO("waiting for arm to arrive");
+		}
+
 		srv.request.enable = false;
 		ROS_INFO("calling gripper release service");
-		//client.call(srv);
+		client.call(srv);
 		
 		ros::spinOnce();
 
@@ -621,7 +560,6 @@ int main(int argc, char **argv)
 	group = new moveit::planning_interface::MoveGroupInterface("manipulator");
 	group->startStateMonitor();
   //subscribe to /move_arm which is a PoseStamped msg
-	ros::Subscriber sub = n.subscribe("move_arm", 1000, move_armCallback);
 	ros::Subscriber grab_sub = n.subscribe("grab",1000, grab);
 	ros::Subscriber gripper_sub = n.subscribe("ariac/gripper/state", 1000, gripper_callback);
 	ros::Subscriber joint_state_subscriber = n.subscribe("/ariac/joint_states", 10,joint_state_callback);

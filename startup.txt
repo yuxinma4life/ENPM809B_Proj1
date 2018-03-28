@@ -2,7 +2,8 @@ source ~/helloworld_ws/devel/setup.bash
 
 rosrun osrf_gear gear.py -f `catkin_find --share osrf_gear`/config/comp_conf1.yaml /home/yuxin/helloworld_ws/src/ariac_example/config/sample_gear_conf.yaml 
 
-rosrun osrf_gear gear.py -f `catkin_find --share osrf_gear`/config/qual2a.yaml ~/helloworld_ws/src/ariac_example/config/team_conf.yaml
+rosrun osrf_gear gear.py -f `catkin_find --share osrf_gear`/config/qual2a.yaml /home/yuxin/helloworld_ws/src/move_arm/config/qual2_config.yaml 
+
 
 
 source ~/helloworld_ws/install/setup.bash
@@ -39,11 +40,27 @@ rostopic pub -1 /move_arm geometry_msgs/PoseStamped '{header: {stamp: now, frame
 #tray
 rostopic pub -1 /move_arm geometry_msgs/PoseStamped '{header: {stamp: now, frame_id: "world"}, pose: {position: {x: 0.3, y: 3.3, z: 0.9}, orientation: {w:  0.707, x: 0.0, y: 0.707, z: 0}}}'
 
+rosrun move_arm move_srv
+
+
 #service call to part
 rosservice call /move_arm/toPose "pose:
   position:
     x: -0.2
     y: 0.33
+    z: 0.745
+  orientation:
+    x: 0.0
+    y: 0.0
+    z: 0.0
+    w: 0.0
+mode: 1" 
+
+#service call to part
+rosservice call /move_arm/toPose "pose:
+  position:
+    x: -0.1
+    y: -0.335
     z: 0.745
   orientation:
     x: 0.0
@@ -77,19 +94,6 @@ rosservice call /move_arm/toPose "pose:
     w: 0.0
 mode: 0"
 
-
-#service call to tray
-rosservice call /move_arm/toPose "pose:
-  position:
-    x: 0.4
-    y: 3.1
-    z: 0.8
-  orientation:
-    x: 0.0
-    y: 0.0
-    z: 0.0
-    w: 0.0
-mode: 2" 
 
 
 

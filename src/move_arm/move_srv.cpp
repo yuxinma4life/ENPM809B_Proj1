@@ -122,7 +122,7 @@ void check_stable(float tolerance)
 			// 	//ROS_INFO("position OK");
 			// }
 			if(std::abs(current_joint_states_.velocity[j]) > tolerance){
-				ROS_INFO("speed  not ok: %d : %d",j,current_joint_states_.velocity[j]);
+				//ROS_INFO("speed  not ok: %d : %d",j,current_joint_states_.velocity[j]);
 				isStable = false;
 			}
 			
@@ -131,7 +131,7 @@ void check_stable(float tolerance)
 		if(i>1000){
 			isStable = true;
 		}
-		ROS_INFO_STREAM("waiting for stable"<<current_joint_states_);
+		//ROS_INFO_STREAM("waiting for stable"<<current_joint_states_);
 		ros::Duration(0.1).sleep();
 	}
 	//ROS_INFO_STREAM("done waiting"<<current_joint_states_);
@@ -165,17 +165,17 @@ void move_to(float x, float y, float z){
 	tf::TransformListener listener;
 	listener.waitForTransform("/world","/tool0",ros::Time(0),ros::Duration(10.0));
 	listener.lookupTransform("/world","/tool0",ros::Time(0), gripper_transform);
-
 	ros::spinOnce();
+	ros::spinOnce();
+	waypoints.clear();
+	generate_gripper_target(0,0,0);
+	geometry_msgs::Pose target_pose3 = gripper_target.pose;
 	
 	double safeHeight = 1.0f;
 	double safeTrackFront = 1.0f;
 	//before moving in x,y, make sure z is above certain height
 	if(gripper_target.pose.position.z < safeHeight){
-			ros::spinOnce();
-		waypoints.clear();
-		generate_gripper_target(0,0,0);
-		geometry_msgs::Pose target_pose3 = gripper_target.pose;
+		
 		waypoints.push_back(target_pose3); 
 		target_pose3.position.z = safeHeight;
 		waypoints.push_back(target_pose3);
@@ -184,6 +184,19 @@ void move_to(float x, float y, float z){
 	}
 
 	if(gripper_target.pose.position.y < 1.5 && y > 1.5){
+
+
+			 // Create a message to send.
+		move_joints(2.1, 
+			0, 
+			-1.57, 
+			3.14,
+			current_joint_states_.position[4],
+			current_joint_states_.position[5],
+			current_joint_states_.position[6],
+			1);
+
+		check_stable(0.03);
 
 			 // Create a message to send.
 		move_joints(2.1, 
@@ -215,7 +228,7 @@ void move_to(float x, float y, float z){
 
 
 		move_joints(1.13, 
-			1.7, 
+			2.0, 
 			-0.5, 
 			1.57,
 			current_joint_states_.position[4],
@@ -240,7 +253,7 @@ void move_to(float x, float y, float z){
 				1);
 
 				while(current_joint_states_.position[1]>0.5){
-				ROS_INFO("waitinf for arm move");
+				//ROS_INFO("waitinf for arm move");
 				ros::spinOnce();
 				}
 				
@@ -312,9 +325,13 @@ bool check_release(float x, float y, float z, float tolerance){
 				x = std::abs(gripper_transform.getOrigin().x() - x);
 				y = std::abs(gripper_transform.getOrigin().y() - y);
 				z = std::abs(gripper_transform.getOrigin().z() - z);
+				if(attached)
+				ROS_INFO("attached");
+
 				if(x <= tolerance && y <= tolerance && z <= tolerance){
 					return true;
 				}
+
 
 				return false;
 
@@ -327,7 +344,7 @@ bool check_release(float x, float y, float z, float tolerance){
 	{
 
 				res.sum = 0;
-  //ROS_INFO("%d",req.pose.position.x);
+  				ROS_INFO("move order received");
 				if(req.mode == 1){
 					srv.request.enable = true;
 					client.call(srv);
@@ -340,13 +357,21 @@ bool check_release(float x, float y, float z, float tolerance){
 				if(req.mode == 2){
 					move_to(req.pose.position.x,req.pose.position.y,req.pose.position.z);
 
-
+					ROS_INFO("not printing");
+					ros::spinOnce();
 					while(!check_release(req.pose.position.x,req.pose.position.y, req.pose.position.z, 0.01f )){
 						ROS_INFO("waiting for arm to arrive");
+						ros::spinOnce();
+						sleep(0.1);
+					}
+					ros::spinOnce();
+					if(attached = false){
+						ROS_INFO("!!!!!!!!!!!part dropped!");
+						res.sum = -1;
 					}
 
 					srv.request.enable = false;
-					ROS_INFO("calling gripper release service");
+					//ROS_INFO("calling gripper release service");
 					client.call(srv);
 
 					ros::spinOnce();

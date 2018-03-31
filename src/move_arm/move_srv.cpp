@@ -166,7 +166,6 @@ void move_to(float x, float y, float z){
 	listener.waitForTransform("/world","/tool0",ros::Time(0),ros::Duration(10.0));
 	listener.lookupTransform("/world","/tool0",ros::Time(0), gripper_transform);
 	ros::spinOnce();
-	ros::spinOnce();
 	waypoints.clear();
 	generate_gripper_target(0,0,0);
 	geometry_msgs::Pose target_pose3 = gripper_target.pose;
@@ -325,10 +324,16 @@ bool check_release(float x, float y, float z, float tolerance){
 				x = std::abs(gripper_transform.getOrigin().x() - x);
 				y = std::abs(gripper_transform.getOrigin().y() - y);
 				z = std::abs(gripper_transform.getOrigin().z() - z);
-				if(attached)
-				ROS_INFO("attached");
-
+				//ROS_INFO("hue");
+				if(attached){
+					//ROS_INFO("attached");
+	
+				}else{
+					//ROS_INFO("not attached");
+				}
+				
 				if(x <= tolerance && y <= tolerance && z <= tolerance){
+					ROS_INFO("tolerance passed: %f ,%f ,%f", x, y, z);
 					return true;
 				}
 
@@ -344,7 +349,7 @@ bool check_release(float x, float y, float z, float tolerance){
 	{
 
 				res.sum = 0;
-  				ROS_INFO("move order received");
+  				//ROS_INFO("move order received");
 				if(req.mode == 1){
 					srv.request.enable = true;
 					client.call(srv);
@@ -357,15 +362,15 @@ bool check_release(float x, float y, float z, float tolerance){
 				if(req.mode == 2){
 					move_to(req.pose.position.x,req.pose.position.y,req.pose.position.z);
 
-					ROS_INFO("not printing");
+					//ROS_INFO("not printing");
 					ros::spinOnce();
 					while(!check_release(req.pose.position.x,req.pose.position.y, req.pose.position.z, 0.01f )){
-						ROS_INFO("waiting for arm to arrive");
+						//ROS_INFO("waiting for arm to arrive");
 						ros::spinOnce();
 						sleep(0.1);
 					}
-					ros::spinOnce();
-					if(attached = false){
+					
+					if(attached == false){
 						ROS_INFO("!!!!!!!!!!!part dropped!");
 						res.sum = -1;
 					}

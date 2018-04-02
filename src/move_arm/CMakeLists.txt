@@ -23,6 +23,8 @@ find_package(catkin REQUIRED
     pluginlib
     geometric_shapes
     moveit_visual_tools
+    std_msgs
+    geometry_msgs
 )
 
 ## System dependencies are found with CMake's conventions
@@ -125,6 +127,7 @@ catkin_package(
     interactive_markers
   DEPENDS
     EIGEN3
+    geometry_msgs
 )
 ###########
 ## Build ##
@@ -169,9 +172,11 @@ link_directories(${catkin_LIBRARY_DIRS})
 
 add_executable(move_arm move_arm.cpp)
 add_executable(move_srv move_srv.cpp)
+add_executable(move_test qual1a.cpp)
 add_dependencies( move_srv ${PROJECT_NAME}_generate_messages_cpp )
 target_link_libraries(move_arm ${catkin_LIBRARIES} ${Boost_LIBRARIES})
 target_link_libraries(move_srv ${catkin_LIBRARIES} ${Boost_LIBRARIES})
+target_link_libraries(move_test ${catkin_LIBRARIES} ${Boost_LIBRARIES})
 install(TARGETS move_arm DESTINATION ${CATKIN_PACKAGE_BIN_DESTINATION})
 
 #############

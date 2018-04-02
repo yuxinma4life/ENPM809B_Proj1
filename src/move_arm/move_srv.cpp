@@ -461,7 +461,7 @@ bool add(move_arm::Pick::Request  &req, move_arm::Pick::Response &res)
 		client.call(srv);
 
 		ros::spinOnce();
-		move_to(req.pose.position.x, req.pose.position.y, req.pose.position.z,req.pose.orientation.z);
+		move_to(req.pose.position.x, req.pose.position.y, req.pose.position.z,0);
 	}
 
 

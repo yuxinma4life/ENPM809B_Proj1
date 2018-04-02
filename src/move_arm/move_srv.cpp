@@ -275,6 +275,98 @@ void move_to(float x, float y, float z, float dyaw) {
 
 	}
 
+	//go to agv2
+	if (gripper_target.pose.position.y < 1.5 && gripper_target.pose.position.y > -1.5 && y < -1.5) {
+
+
+		// Create a message to send.
+		move_joints(2.1,
+		            0,
+		            -1.57,
+		            3.14,
+		            current_joint_states_.position[4],
+		            current_joint_states_.position[5],
+		            current_joint_states_.position[6],
+		            1);
+
+		check_stable(0.03);
+
+		// Create a message to send.
+		move_joints(2.1,
+		            0,
+		            -1.57,
+		            4.71,
+		            current_joint_states_.position[4],
+		            current_joint_states_.position[5],
+		            current_joint_states_.position[6],
+		            1);
+
+		while (!(4.69 < current_joint_states_.position[3] && 4.73 > current_joint_states_.position[3])) {
+			//ROS_INFO("waitinf for arm move");
+			ros::spinOnce();
+		}
+
+
+		move_joints(current_joint_states_.position[0],
+		            -1.8,
+		            current_joint_states_.position[2],
+		            current_joint_states_.position[3],
+		            current_joint_states_.position[4],
+		            current_joint_states_.position[5],
+		            current_joint_states_.position[6],
+		            1);
+
+
+		check_stable(0.03);
+
+
+		move_joints(1.13,
+		            -2.0,
+		            -0.5,
+		            4.71,
+		            current_joint_states_.position[4],
+		            current_joint_states_.position[5],
+		            current_joint_states_.position[6],
+		            1);
+
+
+		check_stable(0.03);
+	}
+
+
+	if (gripper_target.pose.position.y < -1.5 && y<1.5 && y > -1.5)
+	{
+		move_joints(2.1,
+		            0,
+		            -1.57,
+		            4.71,
+		            current_joint_states_.position[4],
+		            current_joint_states_.position[5],
+		            current_joint_states_.position[6],
+		            1);
+
+		while (current_joint_states_.position[1] < - 0.5) {
+			//ROS_INFO("waitinf for arm move");
+			ros::spinOnce();
+		}
+
+
+		check_stable(0.05);
+
+		move_joints(current_joint_states_.position[0],
+		            0,
+		            current_joint_states_.position[2],
+		            3.14,
+		            current_joint_states_.position[4],
+		            current_joint_states_.position[5],
+		            current_joint_states_.position[6],
+		            1);
+
+
+		check_stable(0.03);
+
+	}
+
 
 	
 

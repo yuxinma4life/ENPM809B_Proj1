@@ -7,11 +7,11 @@
 # new environment variables
 
 # modified environment variables
-export CMAKE_PREFIX_PATH="/home/yuxin/helloworld_ws/devel:$CMAKE_PREFIX_PATH"
+export CMAKE_PREFIX_PATH="/home/yuxin/git/ENPM809B_Proj1/devel:$CMAKE_PREFIX_PATH"
 export GAZEBO_MODEL_PATH="/opt/ros/kinetic/share/osrf_gear/models:$GAZEBO_MODEL_PATH"
-export LD_LIBRARY_PATH="/home/yuxin/helloworld_ws/devel/lib:$LD_LIBRARY_PATH"
-export PKG_CONFIG_PATH="/home/yuxin/helloworld_ws/devel/lib/pkgconfig:$PKG_CONFIG_PATH"
-export PWD="/home/yuxin/helloworld_ws/build"
-export PYTHONPATH="/home/yuxin/helloworld_ws/devel/lib/python2.7/dist-packages:$PYTHONPATH"
-export ROSLISP_PACKAGE_DIRECTORIES="/home/yuxin/helloworld_ws/devel/share/common-lisp"
-export ROS_PACKAGE_PATH="/home/yuxin/helloworld_ws/src:$ROS_PACKAGE_PATH"
+export LD_LIBRARY_PATH="/home/yuxin/git/ENPM809B_Proj1/devel/lib:$LD_LIBRARY_PATH"
+export PKG_CONFIG_PATH="/home/yuxin/git/ENPM809B_Proj1/devel/lib/pkgconfig:$PKG_CONFIG_PATH"
+export PWD="/home/yuxin/git/ENPM809B_Proj1/build"
+export PYTHONPATH="/home/yuxin/git/ENPM809B_Proj1/devel/lib/python2.7/dist-packages:$PYTHONPATH"
+export ROSLISP_PACKAGE_DIRECTORIES="/home/yuxin/git/ENPM809B_Proj1/devel/share/common-lisp:$ROSLISP_PACKAGE_DIRECTORIES"
+export ROS_PACKAGE_PATH="/home/yuxin/helloworld_ws/src:/home/yuxin/git/ENPM809B_Proj1/src:$ROS_PACKAGE_PATH"

@@ -1,2 +1,2 @@
 ariac_example:ariac_qual_1:move_arm:universal_robot/universal_robot:universal_robot/ur10_moveit_config:universal_robot/ur3_moveit_config:universal_robot/ur5_moveit_config:universal_robot/ur_bringup:universal_robot/ur_description:universal_robot/ur_driver:universal_robot/ur_gazebo:universal_robot/ur_kinematics:universal_robot/ur_msgs
--DCATKIN_DEVEL_PREFIX=/home/yuxin/helloworld_ws/devel -DCMAKE_INSTALL_PREFIX=/home/yuxin/helloworld_ws/install -G Unix Makefiles
+-DCATKIN_DEVEL_PREFIX=/home/yuxin/git/ENPM809B_Proj1/devel -DCMAKE_INSTALL_PREFIX=/home/yuxin/git/ENPM809B_Proj1/install -G Unix Makefiles

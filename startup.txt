@@ -10,7 +10,7 @@ source ~/helloworld_ws/install/setup.bash
 roslaunch ur10_moveit_config ur10_moveit_planning_execution.launch sim:=true
 roslaunch ur10_moveit_config moveit_rviz.launch config:=true
 
-rosrun move_arm move_arm
+rosrun move_arm move_srv
 rostopic pub -1 /move_arm geometry_msgs/PoseStamped '{header: {stamp: now, frame_id: "world"}, pose: {position: {x: -0.1, y: 0.43, z: 0.9}, orientation: {w: -0.026, x: 0.925, y: -0.331, z: -0.183}}}'
 
 
@@ -94,7 +94,21 @@ rosservice call /move_arm/toPose "pose:
     w: 0.0
 mode: 0"
 
+#agv1 load point frame in world
+0.300, 3.300, -0.750
 
+#service call to tray
+rosservice call /move_arm/toPose "pose:
+  position:
+    x: 0.3
+    y: 3.3
+    z: 0.75
+  orientation:
+    x: 0.0
+    y: 0.0
+    z: 0.0
+    w: 0.0
+mode: 2" 
 
 
 

@@ -338,6 +338,7 @@ bool check_release(float x, float y, float z, float tolerance){
 				}
 
 
+
 				return false;
 
 			}
@@ -382,6 +383,13 @@ bool check_release(float x, float y, float z, float tolerance){
 					ros::spinOnce();
 
 				}
+
+				while(!check_release(req.pose.position.x,req.pose.position.y, req.pose.position.z, 0.05f )){
+						//ROS_INFO("waiting for arm to arrive");
+						ros::spinOnce();
+						sleep(0.1);
+					}
+					check_stable(0.03);
 
 
 				return true;

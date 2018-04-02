@@ -78,6 +78,8 @@ void generate_gripper_target(float dx, float dy, float dz)
 	gripper_target.pose.orientation.x = 0.0;
 	gripper_target.pose.orientation.y = 0.707;
 	gripper_target.pose.orientation.z = 0.0;
+
+
 }
 
 
@@ -161,7 +163,7 @@ void move_joints(float p0, float p1, float p2, float p3, float p4, float p5, flo
 
 
 
-void move_to(float x, float y, float z) {
+void move_to(float x, float y, float z, float dyaw) {
 	tf::TransformListener listener;
 	listener.waitForTransform("/world", "/tool0", ros::Time(0), ros::Duration(10.0));
 	listener.lookupTransform("/world", "/tool0", ros::Time(0), gripper_transform);
@@ -273,6 +275,10 @@ void move_to(float x, float y, float z) {
 
 	}
 
+
+	
+
+
 	check_stable(0.03);
 	ros::spinOnce();
 
@@ -283,6 +289,16 @@ void move_to(float x, float y, float z) {
 	generate_gripper_target(0, 0, 0);
 	target_pose3 = gripper_target.pose;
 	waypoints.push_back(target_pose3);
+
+	//do rotation
+	tf::Quaternion q = tf::createQuaternionFromRPY(0, 1.57, dyaw);
+	q.normalize();
+	ROS_INFO("Quaternion: %f, %f, %f, %f", q[0],q[1],q[2],q[3]);
+
+	target_pose3.orientation.w = q[3];
+	target_pose3.orientation.x = q[0];
+	target_pose3.orientation.y = q[1];
+	target_pose3.orientation.z = q[2];
 
 
 	//maintain height before dropping to avoid tray edge collision
@@ -309,6 +325,9 @@ void move_to(float x, float y, float z) {
 
 
 
+
+
+
 void gripper_callback(const osrf_gear::VacuumGripperState msg)
 {
 	enabled = msg.enabled;
@@ -324,13 +343,7 @@ bool check_release(float x, float y, float z, float tolerance) {
 	x = std::abs(gripper_transform.getOrigin().x() - x);
 	y = std::abs(gripper_transform.getOrigin().y() - y);
 	z = std::abs(gripper_transform.getOrigin().z() - z);
-	//ROS_INFO("hue");
-	if (attached) {
-		//ROS_INFO("attached");
 
-	} else {
-		//ROS_INFO("not attached");
-	}
 
 	if (x <= tolerance && y <= tolerance && z <= tolerance) {
 		ROS_INFO("tolerance passed: %f ,%f ,%f", x, y, z);
@@ -356,12 +369,12 @@ bool add(move_arm::Pick::Request  &req, move_arm::Pick::Response &res)
 		client.call(srv);
 
 		ros::spinOnce();
-		move_to(req.pose.position.x, req.pose.position.y, req.pose.position.z);
+		move_to(req.pose.position.x, req.pose.position.y, req.pose.position.z,req.pose.orientation.z);
 	}
 
 
 	if (req.mode == 2) {
-		move_to(req.pose.position.x, req.pose.position.y, req.pose.position.z);
+		move_to(req.pose.position.x, req.pose.position.y, req.pose.position.z,req.pose.orientation.z);
 
 		//ROS_INFO("not printing");
 		ros::spinOnce();
@@ -434,6 +447,7 @@ void joint_state_callback(
 
 int main(int argc, char **argv)
 {
+
 	ros::init(argc, argv, "move_arm");
 	ros:: NodeHandle n;
 	tf::TransformListener listener;
@@ -444,6 +458,7 @@ int main(int argc, char **argv)
 	group->startStateMonitor();
 	ros::Subscriber gripper_sub = n.subscribe("ariac/gripper/state", 1000, gripper_callback);
 	ros::Subscriber joint_state_subscriber = n.subscribe("/ariac/joint_states", 10, joint_state_callback);
+
 
 
 

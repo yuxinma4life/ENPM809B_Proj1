@@ -1,5 +1,5 @@
 cmake_minimum_required(VERSION 2.8.3)
-project(move_arm)
+project(part_perception)
 
 ## Compile as C++11, supported in ROS Kinetic and newer
 add_compile_options(-std=c++11)
@@ -24,7 +24,11 @@ find_package(catkin REQUIRED
     geometric_shapes
     moveit_visual_tools
     std_msgs
+    tf
+    tf2
     geometry_msgs
+    message_generation
+    rostime
 )
 
 ## System dependencies are found with CMake's conventions
@@ -73,8 +77,11 @@ find_package(Boost REQUIRED system filesystem date_time thread)
 
 ## Generate services in the 'srv' folder
 add_service_files(
-  FILES
-  Pick.srv
+   DIRECTORY srv
+   FILES
+   Inventory_Predication.srv
+   TwoInts.srv
+   Incorrect_Part.srv
 )
 
 ## Generate actions in the 'action' folder
@@ -86,9 +93,10 @@ add_service_files(
 
 ## Generate added messages and services with any dependencies listed here
 generate_messages(
-  DEPENDENCIES
-  std_msgs  # Or other packages containing msgs
-  geometry_msgs
+   DEPENDENCIES
+   std_msgs  # Or other packages containing msgs
+   tf2_msgs	# tf2 package
+   geometry_msgs
 )
 
 ################################################
@@ -127,8 +135,8 @@ catkin_package(
     interactive_markers
   DEPENDS
     EIGEN3
-    geometry_msgs
 )
+
 ###########
 ## Build ##
 ###########
@@ -170,14 +178,13 @@ link_directories(${catkin_LIBRARY_DIRS})
 #   ${catkin_LIBRARIES}
 # )
 
-add_executable(move_arm move_arm.cpp)
-add_executable(move_srv move_srv.cpp)
-#add_executable(move_test qual1a.cpp)
-add_dependencies( move_srv ${PROJECT_NAME}_generate_messages_cpp )
-target_link_libraries(move_arm ${catkin_LIBRARIES} ${Boost_LIBRARIES})
-target_link_libraries(move_srv ${catkin_LIBRARIES} ${Boost_LIBRARIES})
-#target_link_libraries(move_test ${catkin_LIBRARIES} ${Boost_LIBRARIES})
-install(TARGETS move_arm DESTINATION ${CATKIN_PACKAGE_BIN_DESTINATION})
+#add_executable(move_arm move_arm.cpp)
+#target_link_libraries(move_arm ${catkin_LIBRARIES} ${Boost_LIBRARIES})
+#install(TARGETS move_arm DESTINATION ${CATKIN_PACKAGE_BIN_DESTINATION})
+
+add_executable(detect_part main.cpp parts_belt.cpp incorrect_pos.cpp)
+target_link_libraries(detect_part ${catkin_LIBRARIES})
+add_dependencies(detect_part part_perception_generate_messages_cpp)
 
 #############
 ## Install ##

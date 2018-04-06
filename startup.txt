@@ -4,6 +4,11 @@ rosrun osrf_gear gear.py -f `catkin_find --share osrf_gear`/config/comp_conf1.ya
 
 rosrun osrf_gear gear.py -f `catkin_find --share osrf_gear`/config/qual2a.yaml /home/yuxin/helloworld_ws/src/move_arm/config/qual2_config.yaml 
 
+rosrun osrf_gear gear.py -f `catkin_find --share osrf_gear`/config/qual2a.yaml /home/yuxin/helloworld_ws/src/move_arm/config/qual2_config.yaml 
+
+rosrun osrf_gear gear.py -f `catkin_find --share osrf_gear`/config/qual2b.yaml /home/yuxin/helloworld_ws/src/part_perception/config/qual2_config.yaml 
+
+
 
 
 source ~/helloworld_ws/install/setup.bash

@@ -334,7 +334,7 @@ void move_to(float x, float y, float z, float dyaw) {
 	}
 
 
-	if (gripper_target.pose.position.y < -1.5 && y<1.5 && y > -1.5)
+	if (gripper_target.pose.position.y < -1.5 && y < 1.5 && y > -1.5)
 	{
 		move_joints(2.1,
 		            0,
@@ -368,7 +368,7 @@ void move_to(float x, float y, float z, float dyaw) {
 	}
 
 
-	
+
 
 
 	check_stable(0.03);
@@ -385,7 +385,7 @@ void move_to(float x, float y, float z, float dyaw) {
 	//do rotation
 	tf::Quaternion q = tf::createQuaternionFromRPY(0, 1.57, dyaw);
 	q.normalize();
-	ROS_INFO("Quaternion: %f, %f, %f, %f", q[0],q[1],q[2],q[3]);
+	ROS_INFO("Quaternion: %f, %f, %f, %f", q[0], q[1], q[2], q[3]);
 
 	target_pose3.orientation.w = q[3];
 	target_pose3.orientation.x = q[0];
@@ -408,6 +408,70 @@ void move_to(float x, float y, float z, float dyaw) {
 	waypoints.push_back(target_pose3);
 
 	pne(15.0, 0.01);
+
+
+}
+
+/*
+*===================
+*pre belt pickup holding position
+*elbow_joint 1.65
+*linear_arm_actuator_joint 0.00
+*shoulder_lift_joint -0.69
+*shoulder_pan_joint 0.00
+*wrist_1_joint 3.73
+*wrist_2_joint -1.51
+*wrist_3_joint 0.00
+*/
+
+void go_to_belt(float y) {
+	tf::TransformListener listener;
+	listener.waitForTransform("/world", "/tool0", ros::Time(0), ros::Duration(10.0));
+	listener.lookupTransform("/world", "/tool0", ros::Time(0), gripper_transform);
+	ros::spinOnce();
+
+	ROS_INFO("go to belt start");
+
+	if (gripper_transform.getOrigin().y() > 1.5 || gripper_transform.getOrigin().y() < -1.5) {
+		move_joints(2.1,
+		            0,
+		            -1.57,
+		            1.57,
+		            current_joint_states_.position[4],
+		            current_joint_states_.position[5],
+		            current_joint_states_.position[6],
+		            1);
+		ROS_INFO("go to belt check");
+	}
+
+
+	ROS_INFO("go to belt move");
+	// // rotate towards
+	move_joints(2.1,
+	            0,
+	            -1.57,
+	            3.14,
+	            current_joint_states_.position[4],
+	            current_joint_states_.position[5],
+	            current_joint_states_.position[6],
+	            1);
+	move_joints(2.1,
+	            y,
+	            -1.57,
+	            0,
+	            current_joint_states_.position[4],
+	            current_joint_states_.position[5],
+	            current_joint_states_.position[6],
+	            1);
+
+	move_joints(1.65,
+	            y,
+	            -0.69,
+	            0.00,
+	            3.73,
+	            -1.51,
+	            0.00,
+	            1);
 
 
 }
@@ -461,12 +525,18 @@ bool add(move_arm::Pick::Request  &req, move_arm::Pick::Response &res)
 		client.call(srv);
 
 		ros::spinOnce();
-		move_to(req.pose.position.x, req.pose.position.y, req.pose.position.z,0);
+		move_to(req.pose.position.x, req.pose.position.y, req.pose.position.z, 0);
+		while (!check_release(req.pose.position.x, req.pose.position.y, req.pose.position.z, 0.05f )) {
+			//ROS_INFO("waiting for arm to arrive");
+			ros::spinOnce();
+			sleep(0.1);
+		}
+		check_stable(0.03);
 	}
 
 
 	if (req.mode == 2) {
-		move_to(req.pose.position.x, req.pose.position.y, req.pose.position.z,req.pose.orientation.z);
+		move_to(req.pose.position.x, req.pose.position.y, req.pose.position.z, req.pose.orientation.z);
 
 		//ROS_INFO("not printing");
 		ros::spinOnce();
@@ -486,15 +556,21 @@ bool add(move_arm::Pick::Request  &req, move_arm::Pick::Response &res)
 		client.call(srv);
 
 		ros::spinOnce();
+		while (!check_release(req.pose.position.x, req.pose.position.y, req.pose.position.z, 0.05f )) {
+			//ROS_INFO("waiting for arm to arrive");
+			ros::spinOnce();
+			sleep(0.1);
+		}
+		check_stable(0.03);
 
 	}
 
-	while (!check_release(req.pose.position.x, req.pose.position.y, req.pose.position.z, 0.05f )) {
-		//ROS_INFO("waiting for arm to arrive");
-		ros::spinOnce();
-		sleep(0.1);
+
+	
+
+	if (req.mode == 3) {
+		go_to_belt(req.pose.position.y);
 	}
-	check_stable(0.03);
 
 
 	return true;

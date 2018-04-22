@@ -153,11 +153,11 @@ bool Grip_Part::check_part_offset(part_perception::Part_Offset_Gripper::Request&
 		if (part_offset_server_data.transforms.empty()) {
 
 			res.message = "No attached part under logical_camera_1";
-			res.success = true;
+			res.success = false;
 		} else {
 			res.message = " Find attached part under logical_camera_1";
 			res.part_offset_info = part_offset_server_data;
-			res.success = false;
+			res.success = true;
 		}
 
 		return true;

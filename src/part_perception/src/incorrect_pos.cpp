@@ -166,9 +166,9 @@ Incorrect_Pos_AGV::Incorrect_Pos_AGV(ros::NodeHandle node): node(node) {
 	 double z_diff = fabs(actual_trans.z - desired_trans.z);
 
 
-	 ROS_INFO_STREAM("x_diff = " << x_diff);
-	 ROS_INFO_STREAM("y_diff = " << y_diff);
-	 ROS_INFO_STREAM("z_diff = " << z_diff);
+	 //ROS_INFO_STREAM("x_diff = " << x_diff);
+	 //ROS_INFO_STREAM("y_diff = " << y_diff);
+	 //ROS_INFO_STREAM("z_diff = " << z_diff);
 
 	 if (x_diff < translation_tolerance && y_diff < translation_tolerance && z_diff < translation_tolerance) {
 		 return true;
@@ -207,9 +207,9 @@ Incorrect_Pos_AGV::Incorrect_Pos_AGV(ros::NodeHandle node): node(node) {
 	 // !!! test !!
 	 // double Y_diff = 0;
 
-	 ROS_INFO_STREAM("R_diff = " << R_diff);
-	 ROS_INFO_STREAM("P_diff = " << P_diff);
-	 ROS_INFO_STREAM("Y_diff = " << Y_diff);
+	 //ROS_INFO_STREAM("R_diff = " << R_diff);
+	 //ROS_INFO_STREAM("P_diff = " << P_diff);
+	 //ROS_INFO_STREAM("Y_diff = " << Y_diff);
 
 
 

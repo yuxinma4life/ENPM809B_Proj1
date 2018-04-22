@@ -88,7 +88,7 @@ void Belt_Inventory::belt_velo_compute(const tf2_msgs::TFMessage::ConstPtr& msg)
 
 				if (time_stamp_diff == 0) {
 
-					ROS_INFO_STREAM(" No belt_velo update !!");
+					//ROS_INFO_STREAM(" No belt_velo update !!");
 					break;
 				} else {
 					position_diff = possible_part.transform.translation.y \
@@ -141,8 +141,8 @@ void Belt_Inventory:: part_detect(const tf2_msgs::TFMessage::ConstPtr& msg) {
 			if (!on_inventory) {
 				belt_inventory.push_back(possible_part);
 
-				ROS_INFO_STREAM("Find part under logical camera");
-				ROS_INFO_STREAM("The size of inventory is " << belt_inventory.size());
+				//ROS_INFO_STREAM("Find part under logical camera");
+				//ROS_INFO_STREAM("The size of inventory is " << belt_inventory.size());
 			}
 		}
 	}
@@ -168,11 +168,11 @@ void Belt_Inventory::remove_part_from_belt(const double& distance) {
 
 	if (predicate_far_element.transform.translation.y < distance) {
 
-			ROS_INFO_STREAM("Farthest current part position y = " << \
+			//ROS_INFO_STREAM("Farthest current part position y = " << \
 					predicate_far_element.transform.translation.y);
 
 			belt_inventory.erase(belt_inventory.begin());
-			ROS_INFO_STREAM("REMOVE FAR Part");
+			//ROS_INFO_STREAM("REMOVE FAR Part");
 		}
 
 }
@@ -240,7 +240,7 @@ void Belt_Inventory::update_belt_inventory(std::vector<geometry_msgs::TransformS
 		 double duration = Time.toSec() - part.header.stamp.toSec();
 
 		 // send messge
-		 ROS_INFO_STREAM("duration = " << duration);
+		 //ROS_INFO_STREAM("duration = " << duration);
 
 		 // update time
 		 part.header.stamp = Time;
@@ -285,10 +285,10 @@ void Belt_Inventory::publish_belt_inventory(const int& freq) {
 	// tf2_msgs::TFMessage publish_data = convert_belt_inventory_type_to_publish(belt_inventory);
 
 	// output size of belt_inventory vector
-	ROS_INFO_STREAM("Publish belt_inventory size = " << belt_inventory.size());
+	//ROS_INFO_STREAM("Publish belt_inventory size = " << belt_inventory.size());
 
 	// output size of publish data
-	ROS_INFO_STREAM("Publish Size of publish data = " << current_belt_inventory.transforms.size());
+	//ROS_INFO_STREAM("Publish Size of publish data = " << current_belt_inventory.transforms.size());
 
 
 	if (!current_belt_inventory.transforms.empty()) {
@@ -404,8 +404,8 @@ bool Belt_Inventory::find_parts(part_perception::Inventory_Predication::Request&
  */
 bool Belt_Inventory::is_type(std::string part_name, std::string part_type) {
 
-	ROS_INFO_STREAM("part_name: " << part_name);
-	ROS_INFO_STREAM("part_type: " << part_type);
+	//ROS_INFO_STREAM("part_name: " << part_name);
+	//ROS_INFO_STREAM("part_type: " << part_type);
 
 	if (part_name.find(part_type) != std::string::npos) {
 		return true;

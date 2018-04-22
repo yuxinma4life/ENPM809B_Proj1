@@ -19,6 +19,10 @@
 
 #include <move_arm/Pick.h>
 
+//gripper offset
+#include "tf2_msgs/TFMessage.h"
+#include "part_perception/Part_Offset_Gripper.h"
+
 #include <vector>
 
 tf::StampedTransform gripper_transform;
@@ -577,7 +581,7 @@ void fast_pick_up_at_time(double secs) {
 *wrist_3_joint 0.00
 */
 
-void flip_part(){
+void flip_part() {
 	ros::spinOnce();
 
 	//raise shoulder for clearance
@@ -590,7 +594,7 @@ void flip_part(){
 	            0.0,
 	            0.5);
 	sleep(1.0);
-	
+
 	//flip facing the part to down the belt
 	move_joints(-1.62,
 	            2.0,
@@ -602,7 +606,7 @@ void flip_part(){
 	            0.75);
 	check_stable(0.05);
 	sleep(1.0);
-	
+
 	srv.request.enable = false;
 	client.call(srv);
 	ros::spinOnce();
@@ -619,7 +623,7 @@ void flip_part(){
 	            0.5);
 	sleep(1.0);
 	ros::spinOnce();
-	
+
 	//move down and flip
 	move_joints(1.62,
 	            0,
@@ -655,7 +659,7 @@ void flip_part(){
 	client.call(srv);
 	ros::spinOnce();
 
-	while(!attached){
+	while (!attached) {
 		sleep(0.1);
 		ros::spinOnce();
 	}
@@ -686,7 +690,7 @@ void flip_part(){
 }
 
 
-void go_to_camera(){
+void go_to_camera() {
 	tf::TransformListener listener;
 	listener.waitForTransform("/world", "/tool0", ros::Time(0), ros::Duration(10.0));
 	listener.lookupTransform("/world", "/tool0", ros::Time(0), gripper_transform);
@@ -706,7 +710,7 @@ void go_to_camera(){
 		pne(15.0, 0.01);
 		ros::spinOnce();
 	}
-	
+
 
 	ros::spinOnce();
 	move_joints(current_joint_states_.position[0],
@@ -791,11 +795,7 @@ bool check_release(float x, float y, float z, float tolerance) {
 
 }
 
-// if (!start_client.exists()) {
-// 		ROS_INFO("Waiting for the competition to be ready...");
-// 		start_client.waitForExistence();
-// 		ROS_INFO("Competition is now ready.");
-// 	}
+
 
 // void chatterCallback(const nav_msgs::Odometry::ConstPtr& msg){
 // 	r1 = msg->pose.pose.position.x;
@@ -809,7 +809,7 @@ bool check_release(float x, float y, float z, float tolerance) {
 // 	if(yaw <0) yaw+= 360.0;
 // 	roll = (roll/(2*pi))*180.0;
 // 	pitch = (pitch/(2*pi))*180.0;
-//     //ROS_INFO("roll pitch yaw: %f %f %f", roll, pitch, yaw); 
+//     //ROS_INFO("roll pitch yaw: %f %f %f", roll, pitch, yaw);
 //     //ROS_INFO("yaw: %f",yaw);
 
 // 	//v1 = msg->twist.twist.linear.x;
@@ -820,7 +820,24 @@ bool check_release(float x, float y, float z, float tolerance) {
 
 // }
 
-void compute_offset_transform(){
+void compute_offset_transform() {
+	ROS_INFO("Computing Offset");
+	if (!part_perception_client.exists()) {
+		ROS_INFO("Part Perception Service not Started");
+		part_perception_client.waitForExistence();
+	}
+
+	part_perception::Part_Offset_Gripper part_perception_srv;
+	part_perception_srv.request.check_part_offset = true;
+	part_perception_client.call(part_perception_srv);
+	
+
+	if (!part_perception_srv.response.part_offset_info.transforms.empty()) {
+		ROS_INFO("Part Perception: %f",
+			part_perception_srv.response.part_offset_info.transforms[0].transform.translation.x);
+	} else {
+		ROS_INFO("Gripper is holding nothing!");
+	}
 
 }
 
@@ -850,10 +867,10 @@ bool add(move_arm::Pick::Request  &req, move_arm::Pick::Response &res)
 	if (req.mode == 2) {
 
 		go_to_camera();
-		if(std::abs(req.pose.orientation.x) > 0 || std::abs(req.pose.orientation.y) > 0){
+		if (std::abs(req.pose.orientation.x) > 0 || std::abs(req.pose.orientation.y) > 0) {
 			flip_part();
 		}
-		
+
 
 		move_to(req.pose.position.x, req.pose.position.y, req.pose.position.z, req.pose.orientation.z);
 
@@ -904,15 +921,18 @@ bool add(move_arm::Pick::Request  &req, move_arm::Pick::Response &res)
 			sleep(0.1);
 		}
 
-		move_to(req.pose.position.x, req.pose.position.y, req.pose.position.z+0.2f, 0);
-		while (!check_release(req.pose.position.x, req.pose.position.y, req.pose.position.z+0.2, 0.05f )) {
+		move_to(req.pose.position.x, req.pose.position.y, req.pose.position.z + 0.2f, 0);
+		while (!check_release(req.pose.position.x, req.pose.position.y, req.pose.position.z + 0.2, 0.05f )) {
 			//ROS_INFO("waiting for arm to arrive");
 			ros::spinOnce();
 			sleep(0.1);
 		}
-		
+
 
 		go_to_camera();
+		compute_offset_transform();
+		sleep(6.0);
+		compute_offset_transform();
 		//flip_part();
 
 	}
@@ -965,14 +985,14 @@ int main(int argc, char **argv)
 	ros:: NodeHandle n;
 	tf::TransformListener listener;
 	client = n.serviceClient<osrf_gear::VacuumGripperControl>("/ariac/gripper/control");
-	part_perception_client = n.serviceClient<std_srvs::Trigger>("/ariac/check_part_offset");
+	part_perception_client = n.serviceClient<part_perception::Part_Offset_Gripper>("/ariac/check_part_offset");
 
 	group = new moveit::planning_interface::MoveGroupInterface("manipulator");
 	group->startStateMonitor();
 	ros::Subscriber gripper_sub = n.subscribe("ariac/gripper/state", 1000, gripper_callback);
 	ros::Subscriber joint_state_subscriber = n.subscribe("/ariac/joint_states", 10, joint_state_callback);
 
-	
+
 	start_competition(n);
 
 	group->setGoalTolerance(0.02);
@@ -992,7 +1012,7 @@ int main(int argc, char **argv)
 		srv.request.enable = true;
 		client.call(srv);
 
-		
+
 
 
 		ros::spinOnce();

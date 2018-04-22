@@ -19,7 +19,7 @@ private:
 	ros::NodeHandle node;
 	tf2_msgs::TFMessage part_offset;			// the part offset position referring to gripper (tool0)
 	tf2_msgs::TFMessage detect_part;				// the detected part under logical camera 1
-	double check_part_upper_bound = 0.55;					// the upper bound of checking part under logical camera 1
+	double check_part_upper_bound = 0.65;					// the upper bound of checking part under logical camera 1
 	double check_part_lower_bound = 0;					// the lower bound of checking part under logical camera 1
 
 	ros::Publisher part_offset_publisher;			// publisher to publish part offset based on gripper

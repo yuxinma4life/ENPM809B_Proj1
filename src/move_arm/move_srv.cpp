@@ -38,6 +38,7 @@ trajectory_msgs::JointTrajectory msg;
 
 moveit::planning_interface::MoveGroupInterface *group;
 ros::ServiceClient client;
+ros::ServiceClient part_perception_client;
 
 //arm state variables
 bool grabbing = false;
@@ -790,6 +791,39 @@ bool check_release(float x, float y, float z, float tolerance) {
 
 }
 
+// if (!start_client.exists()) {
+// 		ROS_INFO("Waiting for the competition to be ready...");
+// 		start_client.waitForExistence();
+// 		ROS_INFO("Competition is now ready.");
+// 	}
+
+// void chatterCallback(const nav_msgs::Odometry::ConstPtr& msg){
+// 	r1 = msg->pose.pose.position.x;
+// 	r2 = msg->pose.pose.position.y;
+// 	r3 = msg->pose.pose.position.z;
+// 	tf::Quaternion q(msg->pose.pose.orientation.x,msg->pose.pose.orientation.y,msg->pose.pose.orientation.z,msg->pose.pose.orientation.w);
+// 	tf::Matrix3x3 m(q);
+// 	double roll, pitch;
+// 	m.getRPY(roll, pitch, yaw);
+// 	yaw = (yaw/(pi))*180.0;
+// 	if(yaw <0) yaw+= 360.0;
+// 	roll = (roll/(2*pi))*180.0;
+// 	pitch = (pitch/(2*pi))*180.0;
+//     //ROS_INFO("roll pitch yaw: %f %f %f", roll, pitch, yaw); 
+//     //ROS_INFO("yaw: %f",yaw);
+
+// 	//v1 = msg->twist.twist.linear.x;
+// 	//v2 = msg->twist.twist.linear.y;
+// 	//v3 = msg->twist.twist.linear.z;
+// 	// seconds = msg->header.stamp.sec + ((double)msg->header.stamp.nsec)/1000000000;
+//     // ROS_INFO("[%f]", seconds);
+
+// }
+
+void compute_offset_transform(){
+
+}
+
 
 
 
@@ -931,7 +965,7 @@ int main(int argc, char **argv)
 	ros:: NodeHandle n;
 	tf::TransformListener listener;
 	client = n.serviceClient<osrf_gear::VacuumGripperControl>("/ariac/gripper/control");
-
+	part_perception_client = n.serviceClient<std_srvs::Trigger>("/ariac/check_part_offset");
 
 	group = new moveit::planning_interface::MoveGroupInterface("manipulator");
 	group->startStateMonitor();

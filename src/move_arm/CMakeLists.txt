@@ -73,6 +73,7 @@ find_package(Boost REQUIRED system filesystem date_time thread)
 
 ## Generate services in the 'srv' folder
 add_service_files(
+  #DIRECTORY srv
   FILES
   Pick.srv
 )

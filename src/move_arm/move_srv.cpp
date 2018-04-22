@@ -44,6 +44,8 @@ bool grabbing = false;
 bool enabled = false;
 bool attached = false;
 
+double gripper_to_base_offset = -0.169946;
+
 
 /// Start the competition by waiting for and then calling the start ROS Service.
 void start_competition(ros::NodeHandle & node) {
@@ -412,6 +414,9 @@ void move_to(float x, float y, float z, float dyaw) {
 
 }
 
+
+
+
 /*
 *===================
 *pre belt pickup holding position
@@ -430,22 +435,27 @@ void go_to_belt(float y) {
 	listener.lookupTransform("/world", "/tool0", ros::Time(0), gripper_transform);
 	ros::spinOnce();
 
-	ROS_INFO("go to belt start");
+	y = y + gripper_to_base_offset;
 
 	if (gripper_transform.getOrigin().y() > 1.5 || gripper_transform.getOrigin().y() < -1.5) {
 		move_joints(2.1,
 		            0,
 		            -1.57,
-		            1.57,
+		            current_joint_states_.position[3],
 		            current_joint_states_.position[4],
 		            current_joint_states_.position[5],
 		            current_joint_states_.position[6],
 		            1);
-		ROS_INFO("go to belt check");
+		while (!(-0.1 < current_joint_states_.position[1] && 0.1 > current_joint_states_.position[1])) {
+			//ROS_INFO("waitinf for arm move");
+			ros::spinOnce();
+		}
+
 	}
 
 
-	ROS_INFO("go to belt move");
+
+	//ROS_INFO("go to belt move");
 	// // rotate towards
 	move_joints(2.1,
 	            0,
@@ -455,6 +465,7 @@ void go_to_belt(float y) {
 	            current_joint_states_.position[5],
 	            current_joint_states_.position[6],
 	            1);
+	sleep(1.0);
 	move_joints(2.1,
 	            y,
 	            -1.57,
@@ -463,7 +474,7 @@ void go_to_belt(float y) {
 	            current_joint_states_.position[5],
 	            current_joint_states_.position[6],
 	            1);
-
+	sleep(1.0);
 	move_joints(1.65,
 	            y,
 	            -0.69,
@@ -472,13 +483,280 @@ void go_to_belt(float y) {
 	            -1.51,
 	            0.00,
 	            1);
+	check_stable(0.01);
+
+
+}
+
+void fast_pick_up() {
+	srv.request.enable = true;
+	client.call(srv);
+	ros::spinOnce();
+
+	move_joints(1.69,
+	            current_joint_states_.position[1],
+	            current_joint_states_.position[2],
+	            current_joint_states_.position[3],
+	            current_joint_states_.position[4],
+	            current_joint_states_.position[5],
+	            current_joint_states_.position[6],
+	            0.1);
+	sleep(1.0);
+	move_joints(1.60,
+	            current_joint_states_.position[1],
+	            current_joint_states_.position[2],
+	            current_joint_states_.position[3],
+	            current_joint_states_.position[4],
+	            current_joint_states_.position[5],
+	            current_joint_states_.position[6],
+	            0.1);
+
+}
+
+
+void fast_pick_up_at_time(double secs) {
+	bool isTime = false;
+	double now_secs = 0;
+	secs = secs - 0.1;
+	while (!isTime) {
+		now_secs = ros::Time::now().toSec();
+		if (now_secs > secs) {
+			isTime = true;
+		}
+		sleep(0.1);
+		ROS_INFO("waiting time: %f  now: %f", secs, now_secs);
+	}
+
+
+	srv.request.enable = true;
+	client.call(srv);
+	ros::spinOnce();
+
+	move_joints(1.69,
+	            current_joint_states_.position[1],
+	            current_joint_states_.position[2],
+	            current_joint_states_.position[3],
+	            current_joint_states_.position[4],
+	            current_joint_states_.position[5],
+	            current_joint_states_.position[6],
+	            0.1);
+	sleep(1.0);
+	move_joints(1.60,
+	            current_joint_states_.position[1],
+	            current_joint_states_.position[2],
+	            current_joint_states_.position[3],
+	            current_joint_states_.position[4],
+	            current_joint_states_.position[5],
+	            current_joint_states_.position[6],
+	            0.1);
+
+}
+
+
+/*
+*===================
+*2nd bin holding right
+*elbow_joint 2.25
+*linear_arm_actuator_joint 0.5
+*shoulder_lift_joint -0.75
+*shoulder_pan_joint 3.14159
+*wrist_1_joint 3.22
+*wrist_2_joint -1.57
+*wrist_3_joint 0.00
+*/
+/*
+*===================
+*2nd bin holding right
+*elbow_joint 2.25
+*linear_arm_actuator_joint 0.5
+*shoulder_lift_joint -0.75
+*shoulder_pan_joint 3.14159
+*wrist_1_joint 3.22
+*wrist_2_joint 0.00
+*wrist_3_joint 0.00
+*/
+
+void flip_part(){
+	ros::spinOnce();
+
+	//raise shoulder for clearance
+	move_joints(-1.62,
+	            2.0,
+	            -1.57,
+	            3.14,
+	            5.78,
+	            0,
+	            0.0,
+	            0.5);
+	sleep(1.0);
+	
+	//flip facing the part to down the belt
+	move_joints(-1.62,
+	            2.0,
+	            -2.45,
+	            3.14,
+	            5.78,
+	            0,
+	            0.0,
+	            0.75);
+	check_stable(0.05);
+	sleep(1.0);
+	
+	srv.request.enable = false;
+	client.call(srv);
+	ros::spinOnce();
+	sleep(2.0);
+
+	//raise shoulder
+	move_joints(-1.62,
+	            2.0,
+	            -1.57,
+	            3.14,
+	            5.78,
+	            0,
+	            0.0,
+	            0.5);
+	sleep(1.0);
+	ros::spinOnce();
+	
+	//move down and flip
+	move_joints(1.62,
+	            0,
+	            -1.57,
+	            0,
+	            3.22,
+	            0,
+	            0.00,
+	            0.1);
+	sleep(1.0);
+
+	move_joints(1.62,
+	            0,
+	            -1.57,
+	            0,
+	            3.22,
+	            0,
+	            0.00,
+	            0.3);
+	sleep(1.0);
+
+	move_joints(1.62,
+	            0,
+	            -0.69,
+	            0,
+	            4.0,
+	            0,
+	            0.00,
+	            0.5);
+	sleep(1.0);
+
+	srv.request.enable = true;
+	client.call(srv);
+	ros::spinOnce();
+
+	while(!attached){
+		sleep(0.1);
+		ros::spinOnce();
+	}
+
+	move_joints(1.62,
+	            0,
+	            -1.57,
+	            0,
+	            4.0,
+	            0,
+	            0.00,
+	            0.1);
+	sleep(1.0);
+
+	move_joints(1.62,
+	            2.0,
+	            -0.75,
+	            0,
+	            3.34,
+	            -1.57,
+	            0.00,
+	            0.3);
+	sleep(1.0);
+	check_stable(0.05);
+
 
 
 }
 
 
+void go_to_camera(){
+	tf::TransformListener listener;
+	listener.waitForTransform("/world", "/tool0", ros::Time(0), ros::Duration(10.0));
+	listener.lookupTransform("/world", "/tool0", ros::Time(0), gripper_transform);
+	ros::spinOnce();
+	waypoints.clear();
+	generate_gripper_target(0, 0, 0);
+	geometry_msgs::Pose target_pose3 = gripper_target.pose;
 
+	double safeHeight = 1.0f;
+	double safeTrackFront = 1.0f;
+	//before moving in x,y, make sure z is above certain height
+	if (gripper_target.pose.position.z < safeHeight) {
 
+		waypoints.push_back(target_pose3);
+		target_pose3.position.z = safeHeight;
+		waypoints.push_back(target_pose3);
+		pne(15.0, 0.01);
+		ros::spinOnce();
+	}
+	
+
+	ros::spinOnce();
+	move_joints(current_joint_states_.position[0],
+	            0.0,
+	            current_joint_states_.position[2],
+	            current_joint_states_.position[3],
+	            current_joint_states_.position[4],
+	            current_joint_states_.position[5],
+	            current_joint_states_.position[6],
+	            0.1);
+	sleep(2.0);
+	move_joints(2.25,
+	            0.0,
+	            -1.57,
+	            3.14159,
+	            3.22,
+	            -1.57,
+	            0.00,
+	            0.3);
+	sleep(2.0);
+	move_joints(2.25,
+	            0.0,
+	            -1.57,
+	            0,
+	            3.22,
+	            -1.57,
+	            0.00,
+	            0.3);
+	sleep(2.0);
+	move_joints(2.25,
+	            2.0,
+	            -1.57,
+	            0,
+	            3.22,
+	            -1.57,
+	            0.00,
+	            0.3);
+	sleep(1.0);
+
+	move_joints(1.62,
+	            2.0,
+	            -0.75,
+	            0,
+	            3.34,
+	            -1.57,
+	            0.00,
+	            0.3);
+	sleep(1.0);
+	check_stable(0.05);
+
+}
 
 
 
@@ -536,6 +814,13 @@ bool add(move_arm::Pick::Request  &req, move_arm::Pick::Response &res)
 
 
 	if (req.mode == 2) {
+
+		go_to_camera();
+		if(std::abs(req.pose.orientation.x) > 0 || std::abs(req.pose.orientation.y) > 0){
+			flip_part();
+		}
+		
+
 		move_to(req.pose.position.x, req.pose.position.y, req.pose.position.z, req.pose.orientation.z);
 
 		//ROS_INFO("not printing");
@@ -566,10 +851,36 @@ bool add(move_arm::Pick::Request  &req, move_arm::Pick::Response &res)
 	}
 
 
-	
+
 
 	if (req.mode == 3) {
 		go_to_belt(req.pose.position.y);
+		fast_pick_up_at_time(req.future_time.toSec());
+	}
+
+	if (req.mode == 4) {
+		srv.request.enable = true;
+		client.call(srv);
+
+		ros::spinOnce();
+		move_to(req.pose.position.x, req.pose.position.y, req.pose.position.z, 0);
+		while (!check_release(req.pose.position.x, req.pose.position.y, req.pose.position.z, 0.05f )) {
+			//ROS_INFO("waiting for arm to arrive");
+			ros::spinOnce();
+			sleep(0.1);
+		}
+
+		move_to(req.pose.position.x, req.pose.position.y, req.pose.position.z+0.2f, 0);
+		while (!check_release(req.pose.position.x, req.pose.position.y, req.pose.position.z+0.2, 0.05f )) {
+			//ROS_INFO("waiting for arm to arrive");
+			ros::spinOnce();
+			sleep(0.1);
+		}
+		
+
+		go_to_camera();
+		//flip_part();
+
 	}
 
 
@@ -627,9 +938,7 @@ int main(int argc, char **argv)
 	ros::Subscriber gripper_sub = n.subscribe("ariac/gripper/state", 1000, gripper_callback);
 	ros::Subscriber joint_state_subscriber = n.subscribe("/ariac/joint_states", 10, joint_state_callback);
 
-
-
-
+	
 	start_competition(n);
 
 	group->setGoalTolerance(0.02);
@@ -640,12 +949,16 @@ int main(int argc, char **argv)
 	                                  "/ariac/arm/command", 10);
 
 
-
 	ros::Rate loop_rate(100);
 	while (ros::ok())
 	{
 		listener.waitForTransform("/world", "/vacuum_gripper_link", ros::Time(0), ros::Duration(10.0));
 		listener.lookupTransform("/world", "/vacuum_gripper_link", ros::Time(0), gripper_transform);
+
+		srv.request.enable = true;
+		client.call(srv);
+
+		
 
 
 		ros::spinOnce();

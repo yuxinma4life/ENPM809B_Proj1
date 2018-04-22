@@ -1,6 +1,12 @@
 source ~/helloworld_ws/devel/setup.bash 
 
-rosrun osrf_gear gear.py -f `catkin_find --share osrf_gear`/config/qual2b.yaml /home/yuxin/helloworld_ws/src/part_perception/config/qual2_config.yaml 
+rosrun osrf_gear gear.py -f `catkin_find --share osrf_gear`/config/comp_conf1.yaml /home/yuxin/helloworld_ws/src/ariac_example/config/sample_gear_conf.yaml 
+
+rosrun osrf_gear gear.py -f `catkin_find --share osrf_gear`/config/qual2a.yaml /home/yuxin/helloworld_ws/src/move_arm/config/qual2_config.yaml 
+
+rosrun osrf_gear gear.py -f `catkin_find --share osrf_gear`/config/qual2a.yaml /home/yuxin/helloworld_ws/src/move_arm/config/qual2_config.yaml 
+
+rosrun osrf_gear gear.py -f `catkin_find --share osrf_gear`/config/qual3b.yaml /home/yuxin/helloworld_ws/src/part_perception/config/qual3_config.yaml 
 
 source ~/helloworld_ws/install/setup.bash
 roslaunch ur10_moveit_config ur10_moveit_planning_execution.launch sim:=true
@@ -42,9 +48,21 @@ rosrun move_arm move_srv
 #service call to part
 rosservice call /move_arm/toPose "pose:
   position:
-    x: -0.2
-    y: 0.33
-    z: 0.745
+    x: -0.150000
+    y: 0.845
+    z: 0.81
+  orientation:
+    x: 0.0
+    y: 0.0
+    z: 0.0
+    w: 0.0
+mode: 4" 
+
+rosservice call /move_arm/toPose "pose:
+  position:
+    x: -0.150000
+    y: 0.845
+    z: 0.81
   orientation:
     x: 0.0
     y: 0.0
@@ -70,7 +88,7 @@ rosservice call /move_arm/toPose "pose:
   position:
     x: 0.3
     y: 3.2
-    z: 0.8
+    z: 1.0
   orientation:
     x: 0.0
     y: 0.0
@@ -115,3 +133,6 @@ useful cartecian path planning
 https://github.com/ros-planning/moveit_tutorials/blob/indigo-devel/doc/pr2_tutorials/planning/src/move_group_interface_tutorial.cpp
 https://answers.ros.org/question/256803/moveit-problem-about-cartesian-paths-of-move_group_interface/
 
+
+shoulder: 0.50
+elbow 2.13

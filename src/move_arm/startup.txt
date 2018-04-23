@@ -1,10 +1,7 @@
 source ~/helloworld_ws/devel/setup.bash 
 
-rosrun osrf_gear gear.py -f `catkin_find --share osrf_gear`/config/comp_conf1.yaml /home/yuxin/helloworld_ws/src/ariac_example/config/sample_gear_conf.yaml 
 
-rosrun osrf_gear gear.py -f `catkin_find --share osrf_gear`/config/qual2a.yaml /home/yuxin/helloworld_ws/src/move_arm/config/qual2_config.yaml 
-
-rosrun osrf_gear gear.py -f `catkin_find --share osrf_gear`/config/qual2a.yaml /home/yuxin/helloworld_ws/src/move_arm/config/qual2_config.yaml 
+rosrun osrf_gear gear.py -f `catkin_find --share osrf_gear`/config/qual3a.yaml /home/yuxin/helloworld_ws/src/part_perception/config/qual3_config.yaml 
 
 rosrun osrf_gear gear.py -f `catkin_find --share osrf_gear`/config/qual3b.yaml /home/yuxin/helloworld_ws/src/part_perception/config/qual3_config.yaml 
 

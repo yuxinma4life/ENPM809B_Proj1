@@ -191,8 +191,12 @@ void move_to(float x, float y, float z, float dyaw) {
 		pne(15.0, 0.01);
 		ros::spinOnce();
 	}
+
+
+
+	//move from mid to agv1 direction
 	int i = 0;
-	if (gripper_target.pose.position.y < 1.5 && y > 1.5) {
+	if (gripper_target.pose.position.y < 1.5 && gripper_target.pose.position.y > -1.5 && y > 1.5) {
 
 
 		// Create a message to send.
@@ -252,7 +256,8 @@ void move_to(float x, float y, float z, float dyaw) {
 	}
 
 
-	if (gripper_target.pose.position.y > 1.5 && y < 1.5)
+	//back from agv1 to mid
+	if (gripper_target.pose.position.y > 1.5 && y < 1.5 && y> -1.5)
 	{
 		move_joints(2.1,
 		            0,
@@ -284,6 +289,79 @@ void move_to(float x, float y, float z, float dyaw) {
 
 
 		check_stable(0.03);
+
+	}
+
+
+	/*
+*===================
+*2nd bin holding right
+*elbow_joint 2.25
+*linear_arm_actuator_joint 0.5
+*shoulder_lift_joint -0.75
+*shoulder_pan_joint 3.14159
+*wrist_1_joint 3.22
+*wrist_2_joint -1.57
+*wrist_3_joint 0.00
+*/
+
+	//from camera to avg2
+	if (gripper_target.pose.position.y > 1.5 && y < -1.5)
+	{
+		move_joints(2.1,
+		            current_joint_states_.position[1],
+		            -1.57,
+		            1.57,
+		            current_joint_states_.position[4],
+		            current_joint_states_.position[5],
+		            current_joint_states_.position[6],
+		            1);
+		ros::spinOnce();
+		move_joints(2.1,
+		            0,
+		            -1.57,
+		            3.14,
+		            current_joint_states_.position[4],
+		            current_joint_states_.position[5],
+		            current_joint_states_.position[6],
+		            1);
+		i = 0;
+		while (current_joint_states_.position[1] > 0.5 && i < 1000) {
+			ROS_INFO("waiting for arm move");
+			ros::spinOnce();
+			sleep(0.1);
+			i++;
+		}
+
+
+		ros::spinOnce();
+		check_stable(0.05);
+		ros::spinOnce();
+		move_joints(1.13,
+		            0,
+		            -0.5,
+		            4.71,
+		            current_joint_states_.position[4],
+		            current_joint_states_.position[5],
+		            current_joint_states_.position[6],
+		            1);
+
+		ros::spinOnce();
+		check_stable(0.05);
+		ros::spinOnce();
+
+		move_joints(1.13,
+		            -1.8,
+		            -0.5,
+		            4.71,
+		            current_joint_states_.position[4],
+		            current_joint_states_.position[5],
+		            current_joint_states_.position[6],
+		            1);
+
+
+		check_stable(0.03);
+		ros::spinOnce();
 
 	}
 
@@ -1016,6 +1094,51 @@ bool add(move_arm::Pick::Request  &req, move_arm::Pick::Response &res)
 
 	}
 
+	if (req.mode == 5) {
+
+
+
+		if (std::abs(req.pose.orientation.x) > 0 || std::abs(req.pose.orientation.y) > 0) {
+			flip_part();
+		}
+		check_stable(0.03);
+		geometry_msgs::Pose p = compute_offset_transform();
+		float x = req.pose.position.x + p.position.x;
+		float y = req.pose.position.y + p.position.y;
+		float z = req.pose.position.z + p.position.z;
+		move_to(x, y, z, req.pose.orientation.z + p.orientation.z+1.57);
+
+		//ROS_INFO("not printing");
+		ros::spinOnce();
+		i = 0;
+		while (!check_release(x, y, z, 0.01f ) && i < 10000) {
+			//ROS_INFO("waiting for arm to arrive");
+			ros::spinOnce();
+			sleep(0.1);
+			i++;
+		}
+
+		if (attached == false) {
+			ROS_INFO("!!!!!!!!!!!part dropped!");
+			res.sum = -1;
+		}
+
+		srv.request.enable = false;
+		//ROS_INFO("calling gripper release service");
+		client.call(srv);
+
+		ros::spinOnce();
+		i = 0;
+		while (!check_release(x, y, z, 0.05f ) && i < 10000) {
+			//ROS_INFO("waiting for arm to arrive");
+			ros::spinOnce();
+			sleep(0.1);
+			i++;
+		}
+		check_stable(0.03);
+
+	}
+
 
 
 
@@ -1105,6 +1228,19 @@ int main(int argc, char **argv)
 	ros::Subscriber gripper_sub = n.subscribe("ariac/gripper/state", 1000, gripper_callback);
 	ros::Subscriber joint_state_subscriber = n.subscribe("/ariac/joint_states", 10, joint_state_callback);
 
+	// //wait for specific time to start comp
+	// double secs = 15;
+	// double now_secs = 0;
+	// bool isTime = false;
+	// while (!isTime) {
+	// 	now_secs = ros::Time::now().toSec();
+	// 	if (now_secs > secs) {
+	// 		isTime = true;
+	// 	}
+	// 	sleep(0.1);
+	// 	ROS_INFO("waiting time: %f  now: %f", secs, now_secs);
+	// }
+
 
 	start_competition(n);
 
@@ -1115,7 +1251,7 @@ int main(int argc, char **argv)
 	joint_trajectory_publisher_ = n.advertise<trajectory_msgs::JointTrajectory>(
 	                                  "/ariac/arm/command", 10);
 
-
+	int current_step = 0;
 	ros::Rate loop_rate(100);
 	while (ros::ok())
 	{
@@ -1124,6 +1260,21 @@ int main(int argc, char **argv)
 
 		srv.request.enable = true;
 		client.call(srv);
+
+
+		// if (current_step == 0) {
+		// 	secs = secs+1;
+		// 	if (ros::Time::now().toSec() > (secs)) {
+		// 		srv.request.enable = true;
+		// 		client.call(srv);
+		// 		move_to(-0.2, -1.23, 0.75, 0);
+		// 		//fast_pick_up_at_time(40.922);
+
+		// 		current_step ++;
+		// 		ROS_INFO("code run");
+		// 	}
+
+		// }
 
 
 

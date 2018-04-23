@@ -24,6 +24,7 @@
 #include "part_perception/Part_Offset_Gripper.h"
 
 #include <vector>
+#include "math.h"
 
 tf::StampedTransform gripper_transform;
 tf::StampedTransform tray_transform;
@@ -761,6 +762,19 @@ void go_to_camera() {
 	sleep(1.0);
 	check_stable(0.05);
 
+
+	// listener.waitForTransform("/world", "/tool0", ros::Time(0), ros::Duration(10.0));
+	// listener.lookupTransform("/world", "/tool0", ros::Time(0), gripper_transform);
+	// ros::spinOnce();
+	// waypoints.clear();
+	// generate_gripper_target(0, 0, 0);
+	// target_pose3 = gripper_target.pose;
+	// waypoints.push_back(target_pose3);
+	// target_pose3.position.z = 1.4f;
+	// waypoints.push_back(target_pose3);
+	// pne(15.0, 0.01);
+	// ros::spinOnce();
+
 }
 
 
@@ -820,7 +834,32 @@ bool check_release(float x, float y, float z, float tolerance) {
 
 // }
 
-void compute_offset_transform() {
+// tf::TransformListener listener;
+// tf::StampedTransform camera_transform;
+// listener.waitForTransform("/world", "/logical_camera_1_frame", ros::Time(0), ros::Duration(10.0));
+// listener.lookupTransform("/world", "/logical_camera_1_frame", ros::Time(0), camera_transform);
+// ros::spinOnce();
+
+// // !!!!!!!!!!!!!hard coded camera location here
+// float x = 1.24;
+// float y = 1.24;
+// float z = 1.24;
+
+//if (std::abs(camera_transform.getOrigin().x() - x) > 0.01 ||
+
+
+//returns relative x, y, z and dyaw for gripper to accomplish
+geometry_msgs::Pose compute_offset_transform() {
+
+	geometry_msgs::Pose p;
+	p.position.x = 0;
+	p.position.y = 0;
+	p.position.z = 0;
+	p.orientation.x = 0;
+	p.orientation.y = 0;
+	p.orientation.z = 0;
+	p.orientation.w = 0;
+
 	ROS_INFO("Computing Offset");
 	if (!part_perception_client.exists()) {
 		ROS_INFO("Part Perception Service not Started");
@@ -830,14 +869,67 @@ void compute_offset_transform() {
 	part_perception::Part_Offset_Gripper part_perception_srv;
 	part_perception_srv.request.check_part_offset = true;
 	part_perception_client.call(part_perception_srv);
-	
+
 
 	if (!part_perception_srv.response.part_offset_info.transforms.empty()) {
-		ROS_INFO("Part Perception: %f",
-			part_perception_srv.response.part_offset_info.transforms[0].transform.translation.x);
+		float x = part_perception_srv.response.part_offset_info.transforms[0].transform.translation.x;
+		float y = part_perception_srv.response.part_offset_info.transforms[0].transform.translation.y;
+		float z = part_perception_srv.response.part_offset_info.transforms[0].transform.translation.z;
+		if (std::abs(x) > 0.5 || std::abs(y) > 0.5 || std::abs(z) > 0.5) {
+			ROS_INFO("Camera has moved!!!");
+
+			bool ok = false;
+			int i = 0;
+			while (!ok && i<15) {
+				part_perception_srv.request.check_part_offset = true;
+				part_perception_client.call(part_perception_srv);
+				x = part_perception_srv.response.part_offset_info.transforms[0].transform.translation.x;
+				y = part_perception_srv.response.part_offset_info.transforms[0].transform.translation.y;
+				z = part_perception_srv.response.part_offset_info.transforms[0].transform.translation.z;
+				if (std::abs(x) < 0.5 || std::abs(y) < 0.5 || std::abs(z) < 0.5){
+					ok = true;
+				}
+				i++;
+			}
+
+		}
+		// ROS_INFO("Part Perception: %f",
+		//          part_perception_srv.response.part_offset_info.transforms[0].transform.translation.x);
+		tf::Quaternion q(part_perception_srv.response.part_offset_info.transforms[0].transform.rotation.x,
+		                 part_perception_srv.response.part_offset_info.transforms[0].transform.rotation.y,
+		                 part_perception_srv.response.part_offset_info.transforms[0].transform.rotation.z,
+		                 part_perception_srv.response.part_offset_info.transforms[0].transform.rotation.w);
+		tf::Matrix3x3 m(q);
+		double roll, pitch, yaw;
+		m.getRPY(roll, pitch, yaw);
+		ROS_INFO("Part Perception: x %f y %f z %f", part_perception_srv.response.part_offset_info.transforms[0].transform.translation.x,
+		         part_perception_srv.response.part_offset_info.transforms[0].transform.translation.y,
+		         part_perception_srv.response.part_offset_info.transforms[0].transform.translation.z);
+		ROS_INFO("Part Perception: Roll %f Pitch %f Yaw %f", roll, pitch, yaw);
+
+		p.orientation.x = roll;
+		p.orientation.y = pitch;
+		p.orientation.z = yaw;
+
+		x = part_perception_srv.response.part_offset_info.transforms[0].transform.translation.x;
+		y = part_perception_srv.response.part_offset_info.transforms[0].transform.translation.y;
+		z = part_perception_srv.response.part_offset_info.transforms[0].transform.translation.z;
+
+
+		p.position.x = y * cos(yaw) + x * sin(yaw);
+		p.position.y = y * sin(yaw) - x * cos(yaw);
+		p.position.z = z * 2.0;
+
+
+
+
+
+
 	} else {
 		ROS_INFO("Gripper is holding nothing!");
 	}
+
+	return p;
 
 }
 
@@ -867,16 +959,21 @@ bool add(move_arm::Pick::Request  &req, move_arm::Pick::Response &res)
 	if (req.mode == 2) {
 
 		go_to_camera();
+
+
 		if (std::abs(req.pose.orientation.x) > 0 || std::abs(req.pose.orientation.y) > 0) {
 			flip_part();
 		}
-
-
-		move_to(req.pose.position.x, req.pose.position.y, req.pose.position.z, req.pose.orientation.z);
+		check_stable(0.03);
+		geometry_msgs::Pose p = compute_offset_transform();
+		float x = req.pose.position.x + p.position.x;
+		float y = req.pose.position.y + p.position.y;
+		float z = req.pose.position.z + p.position.z;
+		move_to(x, y, z, req.pose.orientation.z + p.orientation.z);
 
 		//ROS_INFO("not printing");
 		ros::spinOnce();
-		while (!check_release(req.pose.position.x, req.pose.position.y, req.pose.position.z, 0.01f )) {
+		while (!check_release(x, y, z, 0.01f )) {
 			//ROS_INFO("waiting for arm to arrive");
 			ros::spinOnce();
 			sleep(0.1);
@@ -892,7 +989,7 @@ bool add(move_arm::Pick::Request  &req, move_arm::Pick::Response &res)
 		client.call(srv);
 
 		ros::spinOnce();
-		while (!check_release(req.pose.position.x, req.pose.position.y, req.pose.position.z, 0.05f )) {
+		while (!check_release(x, y, z, 0.05f )) {
 			//ROS_INFO("waiting for arm to arrive");
 			ros::spinOnce();
 			sleep(0.1);
@@ -931,9 +1028,7 @@ bool add(move_arm::Pick::Request  &req, move_arm::Pick::Response &res)
 
 		go_to_camera();
 		compute_offset_transform();
-		sleep(6.0);
-		compute_offset_transform();
-		//flip_part();
+
 
 	}
 

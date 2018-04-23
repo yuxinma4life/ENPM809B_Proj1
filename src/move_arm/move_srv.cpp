@@ -191,7 +191,7 @@ void move_to(float x, float y, float z, float dyaw) {
 		pne(15.0, 0.01);
 		ros::spinOnce();
 	}
-
+	int i = 0;
 	if (gripper_target.pose.position.y < 1.5 && y > 1.5) {
 
 
@@ -216,10 +216,12 @@ void move_to(float x, float y, float z, float dyaw) {
 		            current_joint_states_.position[5],
 		            current_joint_states_.position[6],
 		            1);
-
-		while (!(1.55 < current_joint_states_.position[3] && 1.59 > current_joint_states_.position[3])) {
+		i = 0;
+		while (!(1.55 < current_joint_states_.position[3] && 1.59 > current_joint_states_.position[3]) && i < 1000) {
 			//ROS_INFO("waitinf for arm move");
 			ros::spinOnce();
+			sleep(0.1);
+			i++;
 		}
 
 
@@ -260,10 +262,12 @@ void move_to(float x, float y, float z, float dyaw) {
 		            current_joint_states_.position[5],
 		            current_joint_states_.position[6],
 		            1);
-
-		while (current_joint_states_.position[1] > 0.5) {
+		i = 0;
+		while (current_joint_states_.position[1] > 0.5 && i < 1000) {
 			//ROS_INFO("waitinf for arm move");
 			ros::spinOnce();
+			sleep(0.1);
+			i++;
 		}
 
 
@@ -308,10 +312,12 @@ void move_to(float x, float y, float z, float dyaw) {
 		            current_joint_states_.position[5],
 		            current_joint_states_.position[6],
 		            1);
-
-		while (!(4.69 < current_joint_states_.position[3] && 4.73 > current_joint_states_.position[3])) {
+		i = 0;
+		while (!(4.69 < current_joint_states_.position[3] && 4.73 > current_joint_states_.position[3]) && i < 1000) {
 			//ROS_INFO("waitinf for arm move");
+			sleep(0.1);
 			ros::spinOnce();
+			i++;
 		}
 
 
@@ -880,16 +886,18 @@ geometry_msgs::Pose compute_offset_transform() {
 
 			bool ok = false;
 			int i = 0;
-			while (!ok && i<15) {
+			while (!ok && i < 1000) {
 				part_perception_srv.request.check_part_offset = true;
 				part_perception_client.call(part_perception_srv);
 				x = part_perception_srv.response.part_offset_info.transforms[0].transform.translation.x;
 				y = part_perception_srv.response.part_offset_info.transforms[0].transform.translation.y;
 				z = part_perception_srv.response.part_offset_info.transforms[0].transform.translation.z;
-				if (std::abs(x) < 0.5 || std::abs(y) < 0.5 || std::abs(z) < 0.5){
+				if (std::abs(x) < 0.5 && std::abs(y) < 0.5 && std::abs(z) < 0.5) {
 					ok = true;
 				}
+				ROS_INFO("Trying to perceive: %d", i);
 				i++;
+				sleep(0.3);
 			}
 
 		}
@@ -916,9 +924,13 @@ geometry_msgs::Pose compute_offset_transform() {
 		z = part_perception_srv.response.part_offset_info.transforms[0].transform.translation.z;
 
 
-		p.position.x = y * cos(yaw) + x * sin(yaw);
-		p.position.y = y * sin(yaw) - x * cos(yaw);
+		p.position.x = -y * cos(yaw) + x * sin(yaw);
+		p.position.y =  - y * sin(yaw) - x * cos(yaw);
 		p.position.z = z * 2.0;
+
+		ROS_INFO("offset ysin: %f", y * sin(yaw));
+		ROS_INFO("offset xcos: %f", x * cos(yaw));
+
 
 
 
@@ -938,7 +950,7 @@ geometry_msgs::Pose compute_offset_transform() {
 
 bool add(move_arm::Pick::Request  &req, move_arm::Pick::Response &res)
 {
-
+	int i = 0;
 	res.sum = 0;
 	//ROS_INFO("move order received");
 	if (req.mode == 1) {
@@ -947,10 +959,12 @@ bool add(move_arm::Pick::Request  &req, move_arm::Pick::Response &res)
 
 		ros::spinOnce();
 		move_to(req.pose.position.x, req.pose.position.y, req.pose.position.z, 0);
-		while (!check_release(req.pose.position.x, req.pose.position.y, req.pose.position.z, 0.05f )) {
+		i = 0;
+		while (!check_release(req.pose.position.x, req.pose.position.y, req.pose.position.z, 0.05f ) && i < 10000) {
 			//ROS_INFO("waiting for arm to arrive");
 			ros::spinOnce();
 			sleep(0.1);
+			i++;
 		}
 		check_stable(0.03);
 	}
@@ -969,14 +983,16 @@ bool add(move_arm::Pick::Request  &req, move_arm::Pick::Response &res)
 		float x = req.pose.position.x + p.position.x;
 		float y = req.pose.position.y + p.position.y;
 		float z = req.pose.position.z + p.position.z;
-		move_to(x, y, z, req.pose.orientation.z + p.orientation.z);
+		move_to(x, y, z, req.pose.orientation.z + p.orientation.z+1.57);
 
 		//ROS_INFO("not printing");
 		ros::spinOnce();
-		while (!check_release(x, y, z, 0.01f )) {
+		i = 0;
+		while (!check_release(x, y, z, 0.01f ) && i < 10000) {
 			//ROS_INFO("waiting for arm to arrive");
 			ros::spinOnce();
 			sleep(0.1);
+			i++;
 		}
 
 		if (attached == false) {
@@ -989,10 +1005,12 @@ bool add(move_arm::Pick::Request  &req, move_arm::Pick::Response &res)
 		client.call(srv);
 
 		ros::spinOnce();
-		while (!check_release(x, y, z, 0.05f )) {
+		i = 0;
+		while (!check_release(x, y, z, 0.05f ) && i < 10000) {
 			//ROS_INFO("waiting for arm to arrive");
 			ros::spinOnce();
 			sleep(0.1);
+			i++;
 		}
 		check_stable(0.03);
 

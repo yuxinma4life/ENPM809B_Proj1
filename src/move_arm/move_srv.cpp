@@ -1047,6 +1047,17 @@ bool add(move_arm::Pick::Request  &req, move_arm::Pick::Response &res)
 			i++;
 		}
 		check_stable(0.03);
+		i = 0;
+		while (!attached && i < 100) {
+			sleep(0.1);
+			ros::spinOnce();
+			i++;
+		}
+		if(i >= 100){
+			res.sum=-1;
+			ROS_INFO("!!!!!!!!!!!Pick Failed!");
+		}
+
 	}
 
 
@@ -1230,7 +1241,7 @@ int main(int argc, char **argv)
 	ros::Subscriber gripper_sub = n.subscribe("ariac/gripper/state", 1000, gripper_callback);
 	ros::Subscriber joint_state_subscriber = n.subscribe("/ariac/joint_states", 10, joint_state_callback);
 
-	
+
 
 	start_competition(n);
 
@@ -1242,8 +1253,8 @@ int main(int argc, char **argv)
 	                                  "/ariac/arm/command", 10);
 
 	ros::ServiceClient client_agv1 = n.serviceClient<osrf_gear::AGVControl>("/ariac/agv1");
-    ros::ServiceClient client_agv2 = n.serviceClient<osrf_gear::AGVControl>("/ariac/agv2");
-    osrf_gear::AGVControl Go_delivery;
+	ros::ServiceClient client_agv2 = n.serviceClient<osrf_gear::AGVControl>("/ariac/agv2");
+	osrf_gear::AGVControl Go_delivery;
 
 
 	ros::Rate loop_rate(100);

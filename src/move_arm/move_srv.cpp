@@ -961,7 +961,8 @@ geometry_msgs::Pose compute_offset_transform() {
 		float x = part_perception_srv.response.part_offset_info.transforms[0].transform.translation.x;
 		float y = part_perception_srv.response.part_offset_info.transforms[0].transform.translation.y;
 		float z = part_perception_srv.response.part_offset_info.transforms[0].transform.translation.z;
-		if (std::abs(x) > 0.5 || std::abs(y) > 0.5 || std::abs(z) > 0.5) {
+		float camera_move_tolerance = 0.15;
+		if (std::abs(x) > camera_move_tolerance || std::abs(y) > camera_move_tolerance || std::abs(z) > camera_move_tolerance) {
 			ROS_INFO("Camera has moved!!!");
 
 			bool ok = false;
@@ -972,7 +973,7 @@ geometry_msgs::Pose compute_offset_transform() {
 				x = part_perception_srv.response.part_offset_info.transforms[0].transform.translation.x;
 				y = part_perception_srv.response.part_offset_info.transforms[0].transform.translation.y;
 				z = part_perception_srv.response.part_offset_info.transforms[0].transform.translation.z;
-				if (std::abs(x) < 0.5 && std::abs(y) < 0.5 && std::abs(z) < 0.5) {
+				if (std::abs(x) < camera_move_tolerance && std::abs(y) < camera_move_tolerance && std::abs(z) < camera_move_tolerance) {
 					ok = true;
 				}
 				ROS_INFO("Trying to perceive: %d", i);
@@ -1053,8 +1054,8 @@ bool add(move_arm::Pick::Request  &req, move_arm::Pick::Response &res)
 			ros::spinOnce();
 			i++;
 		}
-		if(i >= 100){
-			res.sum=-1;
+		if (i >= 100) {
+			res.sum = -1;
 			ROS_INFO("!!!!!!!!!!!Pick Failed!");
 		}
 
@@ -1075,21 +1076,41 @@ bool add(move_arm::Pick::Request  &req, move_arm::Pick::Response &res)
 		float y = req.pose.position.y + p.position.y;
 		float z = req.pose.position.z + p.position.z;
 		move_to(x, y, z, req.pose.orientation.z + p.orientation.z + 1.57);
+		ROS_INFO("OFFSET: %f , %f, %f", p.position.x,p.position.y,p.position.z);
 
 		//ROS_INFO("not printing");
 		ros::spinOnce();
+		tf::TransformListener listener;
+		listener.waitForTransform("/world", "/tool0", ros::Time(0), ros::Duration(10.0));
+		listener.lookupTransform("/world", "/tool0", ros::Time(0), gripper_transform);
+		ros::spinOnce();
+		// x = std::abs(gripper_transform.getOrigin().x() - x);
+		// y = std::abs(gripper_transform.getOrigin().y() - y);
+		// z = std::abs(gripper_transform.getOrigin().z() - z);
+
 		i = 0;
 		while (!check_release(x, y, z, 0.01f ) && i < 10000) {
 			//ROS_INFO("waiting for arm to arrive");
 			ros::spinOnce();
+			listener.waitForTransform("/world", "/tool0", ros::Time(0), ros::Duration(10.0));
+			listener.lookupTransform("/world", "/tool0", ros::Time(0), gripper_transform);
+
+			if (attached == false && res.sum==0) {
+				ROS_INFO("!!!!!!!!!!!part dropped at %f", gripper_transform.getOrigin().y());
+				res.sum = -1;
+			}
 			sleep(0.1);
 			i++;
 		}
+		ros::spinOnce();
+		listener.waitForTransform("/world", "/tool0", ros::Time(0), ros::Duration(10.0));
+		listener.lookupTransform("/world", "/tool0", ros::Time(0), gripper_transform);
 
 		if (attached == false) {
-			ROS_INFO("!!!!!!!!!!!part dropped!");
+			ROS_INFO("!!!!!!!!!!!part dropped at %f", gripper_transform.getOrigin().y());
 			res.sum = -1;
 		}
+
 
 		srv.request.enable = false;
 		//ROS_INFO("calling gripper release service");

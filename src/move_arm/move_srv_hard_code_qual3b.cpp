@@ -22,7 +22,6 @@
 //gripper offset
 #include "tf2_msgs/TFMessage.h"
 #include "part_perception/Part_Offset_Gripper.h"
-#include "part_perception/Inventory_Predication.h"
 
 #include <vector>
 #include "math.h"
@@ -47,7 +46,6 @@ trajectory_msgs::JointTrajectory msg;
 moveit::planning_interface::MoveGroupInterface *group;
 ros::ServiceClient client;
 ros::ServiceClient part_perception_client;
-ros::ServiceClient belt_query_client;
 
 //arm state variables
 bool grabbing = false;
@@ -195,18 +193,11 @@ void move_to(float x, float y, float z, float dyaw) {
 		pne(15.0, 0.01);
 		ros::spinOnce();
 	}
-	int i = 0;
-
-	while (gripper_target.pose.position.z < safeHeight && i<100) {
-		ros::spinOnce();
-		sleep(0.1);
-		i++;
-	}
 
 
 
 	//move from mid to agv1 direction
-	i = 0;
+	int i = 0;
 	if (gripper_target.pose.position.y < 1.5 && gripper_target.pose.position.y > -1.5 && y > 1.5) {
 
 
@@ -470,25 +461,6 @@ void move_to(float x, float y, float z, float dyaw) {
 
 	}
 
-	if (gripper_target.pose.position.y > 2 && y > 2 ){
-		ros::spinOnce();
-		move_joints(current_joint_states_.position[0],
-		            current_joint_states_.position[1],
-		            current_joint_states_.position[2],
-		            1.57,
-		            current_joint_states_.position[4],
-		            current_joint_states_.position[5],
-		            current_joint_states_.position[6],
-		            0.3);
-
-		sleep(2.0);
-
-		check_stable(0.03);
-
-	}
-
-
-
 
 
 
@@ -565,7 +537,7 @@ void go_to_belt(float y) {
 		            current_joint_states_.position[4],
 		            current_joint_states_.position[5],
 		            current_joint_states_.position[6],
-		            0.1);
+		            1);
 		while (!(-0.1 < current_joint_states_.position[1] && 0.1 > current_joint_states_.position[1])) {
 			//ROS_INFO("waitinf for arm move");
 			ros::spinOnce();
@@ -584,25 +556,17 @@ void go_to_belt(float y) {
 	            current_joint_states_.position[4],
 	            current_joint_states_.position[5],
 	            current_joint_states_.position[6],
-	            0.1);
-	sleep(2.0);
-
+	            1);
+	sleep(1.0);
 	move_joints(2.1,
-	            0,
+	            y,
 	            -1.57,
 	            0,
 	            current_joint_states_.position[4],
 	            current_joint_states_.position[5],
 	            current_joint_states_.position[6],
-	            0.1);
+	            1);
 	sleep(1.0);
-	//wait for arm to go to belt direction before move
-	while (!(1.4 > current_joint_states_.position[3] ) ) {
-		//ROS_INFO("waitinf for arm move");
-		sleep(0.1);
-		ros::spinOnce();
-	}
-
 	move_joints(1.65,
 	            y,
 	            -0.69,
@@ -610,8 +574,8 @@ void go_to_belt(float y) {
 	            3.73,
 	            -1.51,
 	            0.00,
-	            0.1);
-	check_stable(0.05);
+	            1);
+	check_stable(0.01);
 
 
 }
@@ -646,9 +610,7 @@ void fast_pick_up_at_time(double secs) {
 	bool isTime = false;
 	double now_secs = 0;
 	secs = secs - 0.1;
-
 	while (!isTime) {
-		ros::spinOnce();
 		now_secs = ros::Time::now().toSec();
 		if (now_secs > secs) {
 			isTime = true;
@@ -671,9 +633,9 @@ void fast_pick_up_at_time(double secs) {
 	            current_joint_states_.position[6],
 	            0.1);
 	sleep(1.0);
-	move_joints(1.55,
-	            0,
-	            -1.0,
+	move_joints(1.60,
+	            current_joint_states_.position[1],
+	            current_joint_states_.position[2],
 	            current_joint_states_.position[3],
 	            current_joint_states_.position[4],
 	            -1.57,
@@ -784,15 +746,6 @@ void flip_part() {
 	client.call(srv);
 	ros::spinOnce();
 
-	move_joints(1.62,
-	            2.0,
-	            -0.69,
-	            0,
-	            4.0,
-	            0,
-	            0.00,
-	            15.0);
-
 	while (!attached) {
 		sleep(0.1);
 		ros::spinOnce();
@@ -884,14 +837,14 @@ void go_to_camera() {
 	            0.3);
 	sleep(1.0);
 
-	move_joints(1.49,
+	move_joints(1.62,
 	            2.0,
-	            -0.87,
+	            -0.75,
 	            0,
-	            4.00,
+	            3.34,
 	            -1.57,
 	            0.00,
-	            0.5);
+	            0.3);
 	sleep(1.0);
 	check_stable(0.05);
 
@@ -1008,8 +961,7 @@ geometry_msgs::Pose compute_offset_transform() {
 		float x = part_perception_srv.response.part_offset_info.transforms[0].transform.translation.x;
 		float y = part_perception_srv.response.part_offset_info.transforms[0].transform.translation.y;
 		float z = part_perception_srv.response.part_offset_info.transforms[0].transform.translation.z;
-		float camera_move_tolerance = 0.15;
-		if (std::abs(x) > camera_move_tolerance || std::abs(y) > camera_move_tolerance || std::abs(z) > camera_move_tolerance) {
+		if (std::abs(x) > 0.5 || std::abs(y) > 0.5 || std::abs(z) > 0.5) {
 			ROS_INFO("Camera has moved!!!");
 
 			bool ok = false;
@@ -1020,7 +972,7 @@ geometry_msgs::Pose compute_offset_transform() {
 				x = part_perception_srv.response.part_offset_info.transforms[0].transform.translation.x;
 				y = part_perception_srv.response.part_offset_info.transforms[0].transform.translation.y;
 				z = part_perception_srv.response.part_offset_info.transforms[0].transform.translation.z;
-				if (std::abs(x) < camera_move_tolerance && std::abs(y) < camera_move_tolerance && std::abs(z) < camera_move_tolerance) {
+				if (std::abs(x) < 0.5 && std::abs(y) < 0.5 && std::abs(z) < 0.5) {
 					ok = true;
 				}
 				ROS_INFO("Trying to perceive: %d", i);
@@ -1052,19 +1004,11 @@ geometry_msgs::Pose compute_offset_transform() {
 		z = part_perception_srv.response.part_offset_info.transforms[0].transform.translation.z;
 
 
-		// p.position.x = - y * cos(yaw) + x * sin(yaw);
-		// p.position.y =  - y * sin(yaw) - x * cos(yaw);
-		// p.position.z = z * 2.0;
-
-
-		p.position.x = + y * sin(yaw)  - x * cos(yaw);
-		p.position.y =  y * cos(yaw) + x * sin(yaw);
+		p.position.x = -y * cos(yaw) + x * sin(yaw);
+		p.position.y =  - y * sin(yaw) - x * cos(yaw);
 		p.position.z = z * 2.0;
 
-
 		ROS_INFO("offset ysin: %f", y * sin(yaw));
-		ROS_INFO("offset ycos: %f", y * cos(yaw));
-		ROS_INFO("offset xsin: %f", x * sin(yaw));
 		ROS_INFO("offset xcos: %f", x * cos(yaw));
 
 
@@ -1078,36 +1022,6 @@ geometry_msgs::Pose compute_offset_transform() {
 	}
 
 	return p;
-
-}
-
-// rosservice call /ariac/query_belt_part "part_type: 'gasket'
-// future_time:
-//   secs: 65
-//   nsecs: 0"
-
-
-bool query_belt_part(std::string part_type) {
-	if (!belt_query_client.exists()) {
-		ROS_INFO("Part Perception Service not Started");
-		belt_query_client.waitForExistence();
-	}
-
-	part_perception::Inventory_Predication belt_query_srv;
-	belt_query_srv.request.part_type = part_type;
-	belt_query_srv.request.future_time.sec = ros::Time::now().sec + 5;
-	belt_query_srv.request.future_time.nsec = ros::Time::now().nsec;
-	belt_query_client.call(belt_query_srv);
-
-	if (belt_query_srv.response.success) {
-		ROS_INFO("belt query SUCCESS");
-
-	} else {
-		ROS_INFO("belt query FAILURE");
-		return false;
-	}
-
-
 
 }
 
@@ -1133,17 +1047,6 @@ bool add(move_arm::Pick::Request  &req, move_arm::Pick::Response &res)
 			i++;
 		}
 		check_stable(0.03);
-		i = 0;
-		while (!attached && i < 100) {
-			sleep(0.1);
-			ros::spinOnce();
-			i++;
-		}
-		if (i >= 100) {
-			res.sum = -1;
-			ROS_INFO("!!!!!!!!!!!Pick Failed!");
-		}
-
 	}
 
 
@@ -1152,76 +1055,30 @@ bool add(move_arm::Pick::Request  &req, move_arm::Pick::Response &res)
 		go_to_camera();
 
 
-
 		if (std::abs(req.pose.orientation.x) > 0 || std::abs(req.pose.orientation.y) > 0) {
 			flip_part();
 		}
 		check_stable(0.03);
-		bool drop_check_finished = false;
-
-		if (attached == false) {
-			ROS_INFO("!!!!!!!!!!!part dropped at %f", gripper_transform.getOrigin().y());
-			res.sum = -1;
-			drop_check_finished = true;
-		}
-
 		geometry_msgs::Pose p = compute_offset_transform();
-		p = compute_offset_transform();
-		p = compute_offset_transform();
-		p = compute_offset_transform();
 		float x = req.pose.position.x + p.position.x;
 		float y = req.pose.position.y + p.position.y;
-		float z = req.pose.position.z ; //+ p.position.z
-		float dyaw = req.pose.orientation.z + p.orientation.z + 1.57;
-		move_to(x, y, z, dyaw);
-		ROS_INFO("OFFSET: x: %f , y: %f, z: %f", p.position.x, p.position.y, p.position.z);
-		ROS_INFO("Commanded Yaw: %f", dyaw);
+		float z = req.pose.position.z + p.position.z;
+		move_to(x, y, z, req.pose.orientation.z + p.orientation.z + 1.57);
 
 		//ROS_INFO("not printing");
 		ros::spinOnce();
-		tf::TransformListener listener;
-		listener.waitForTransform("/world", "/tool0", ros::Time(0), ros::Duration(10.0));
-		listener.lookupTransform("/world", "/tool0", ros::Time(0), gripper_transform);
-		ros::spinOnce();
-
-		// x = std::abs(gripper_transform.getOrigin().x() - x);
-		// y = std::abs(gripper_transform.getOrigin().y() - y);
-		// z = std::abs(gripper_transform.getOrigin().z() - z);
-
 		i = 0;
-		while (!check_release(x, y, z, 0.005f ) && i < 10000 && !drop_check_finished) {
+		while (!check_release(x, y, z, 0.01f ) && i < 10000) {
 			//ROS_INFO("waiting for arm to arrive");
 			ros::spinOnce();
-			listener.waitForTransform("/world", "/tool0", ros::Time(0), ros::Duration(10.0));
-			listener.lookupTransform("/world", "/tool0", ros::Time(0), gripper_transform);
-
-			if (attached == false && res.sum == 0) {
-				ROS_INFO("!!!!!!!!!!!part dropped at %f", gripper_transform.getOrigin().y());
-				res.sum = -1;
-				if (gripper_transform.getOrigin().y() > 2 || gripper_transform.getOrigin().y() < -2) {
-					ROS_INFO("Dropped on AVG, counting as OK!");
-					res.sum = 0;
-				}
-				drop_check_finished = true;
-			}
 			sleep(0.1);
 			i++;
 		}
-		ros::spinOnce();
-		listener.waitForTransform("/world", "/tool0", ros::Time(0), ros::Duration(10.0));
-		listener.lookupTransform("/world", "/tool0", ros::Time(0), gripper_transform);
 
-		if (attached == false && drop_check_finished == false) {
-			ROS_INFO("!!!!!!!!!!!part dropped at %f", gripper_transform.getOrigin().y());
+		if (attached == false) {
+			ROS_INFO("!!!!!!!!!!!part dropped!");
 			res.sum = -1;
 		}
-		if (drop_check_finished == false) {
-			if (gripper_transform.getOrigin().y() > 2 || gripper_transform.getOrigin().y() < -2) {
-				ROS_INFO("Dropped on AVG, counting as OK!");
-				res.sum = 0;
-			}
-		}
-
 
 		srv.request.enable = false;
 		//ROS_INFO("calling gripper release service");
@@ -1243,7 +1100,44 @@ bool add(move_arm::Pick::Request  &req, move_arm::Pick::Response &res)
 
 
 
-		go_to_camera();
+		if (std::abs(req.pose.orientation.x) > 0 || std::abs(req.pose.orientation.y) > 0) {
+			flip_part();
+		}
+		check_stable(0.03);
+		geometry_msgs::Pose p = compute_offset_transform();
+		float x = req.pose.position.x + p.position.x;
+		float y = req.pose.position.y + p.position.y;
+		float z = req.pose.position.z + p.position.z;
+		move_to(x, y, z, req.pose.orientation.z + p.orientation.z + 1.57);
+
+		//ROS_INFO("not printing");
+		ros::spinOnce();
+		i = 0;
+		while (!check_release(x, y, z, 0.01f ) && i < 10000) {
+			//ROS_INFO("waiting for arm to arrive");
+			ros::spinOnce();
+			sleep(0.1);
+			i++;
+		}
+
+		if (attached == false) {
+			ROS_INFO("!!!!!!!!!!!part dropped!");
+			res.sum = -1;
+		}
+
+		srv.request.enable = false;
+		//ROS_INFO("calling gripper release service");
+		client.call(srv);
+
+		ros::spinOnce();
+		i = 0;
+		while (!check_release(x, y, z, 0.05f ) && i < 10000) {
+			//ROS_INFO("waiting for arm to arrive");
+			ros::spinOnce();
+			sleep(0.1);
+			i++;
+		}
+		check_stable(0.03);
 
 	}
 
@@ -1251,45 +1145,8 @@ bool add(move_arm::Pick::Request  &req, move_arm::Pick::Response &res)
 
 
 	if (req.mode == 3) {
-		// go_to_belt(req.pose.position.y);
-		// fast_pick_up_at_time(req.future_time.toSec());
-		//query_belt_part(req.part_type);
-		ROS_INFO("Mode 3: Looking for %s on belt", req.part_type.c_str());
-		if (!belt_query_client.exists()) {
-			ROS_INFO("Part Perception Service not Started");
-			belt_query_client.waitForExistence();
-		}
-
-		part_perception::Inventory_Predication belt_query_srv;
-		belt_query_srv.request.part_type = req.part_type;
-		belt_query_srv.request.future_time.sec = ros::Time::now().sec + 4;
-		belt_query_srv.request.future_time.nsec = ros::Time::now().nsec;
-		belt_query_client.call(belt_query_srv);
-
-
-
-		if (belt_query_srv.response.success) {
-			ROS_INFO("belt query SUCCESS");
-			if (belt_query_srv.response.parts_info.transforms[0].transform.translation.y < 2) {
-				ROS_INFO("belt query in range");
-				go_to_belt(belt_query_srv.response.parts_info.transforms[0].transform.translation.y + 2.2);
-				fast_pick_up_at_time(belt_query_srv.request.future_time.toSec());
-			}else{
-				ROS_INFO("belt query out of range, returning -1");
-			}
-
-			ros::spinOnce();
-			if (attached) {
-				res.sum = 0;
-			} else {
-				res.sum = -1;
-			}
-
-		} else {
-			ROS_INFO("belt query FAILURE");
-			res.sum = -1;
-		}
-
+		go_to_belt(req.pose.position.y);
+		fast_pick_up_at_time(req.future_time.toSec());
 	}
 
 	if (req.mode == 4) {
@@ -1367,13 +1224,24 @@ int main(int argc, char **argv)
 	tf::TransformListener listener;
 	client = n.serviceClient<osrf_gear::VacuumGripperControl>("/ariac/gripper/control");
 	part_perception_client = n.serviceClient<part_perception::Part_Offset_Gripper>("/ariac/check_part_offset");
-	belt_query_client = n.serviceClient<part_perception::Inventory_Predication>("/ariac/query_belt_part");
 
 	group = new moveit::planning_interface::MoveGroupInterface("manipulator");
 	group->startStateMonitor();
 	ros::Subscriber gripper_sub = n.subscribe("ariac/gripper/state", 1000, gripper_callback);
 	ros::Subscriber joint_state_subscriber = n.subscribe("/ariac/joint_states", 10, joint_state_callback);
 
+	//wait for specific time to start comp
+	double secs = 15;
+	double now_secs = 0;
+	bool isTime = false;
+	while (!isTime) {
+		now_secs = ros::Time::now().toSec();
+		if (now_secs > secs) {
+			isTime = true;
+		}
+		sleep(0.1);
+		ROS_INFO("waiting time: %f  now: %f", secs, now_secs);
+	}
 
 
 	start_competition(n);
@@ -1386,10 +1254,12 @@ int main(int argc, char **argv)
 	                                  "/ariac/arm/command", 10);
 
 	ros::ServiceClient client_agv1 = n.serviceClient<osrf_gear::AGVControl>("/ariac/agv1");
-	ros::ServiceClient client_agv2 = n.serviceClient<osrf_gear::AGVControl>("/ariac/agv2");
-	osrf_gear::AGVControl Go_delivery;
+    ros::ServiceClient client_agv2 = n.serviceClient<osrf_gear::AGVControl>("/ariac/agv2");
+    osrf_gear::AGVControl Go_delivery;
 
 
+	int current_step = 0;
+	secs = secs + 1;
 	ros::Rate loop_rate(100);
 	while (ros::ok())
 	{
@@ -1398,6 +1268,469 @@ int main(int argc, char **argv)
 
 		srv.request.enable = true;
 		client.call(srv);
+		ros::spinOnce();
+
+		if (current_step == 0) {
+
+			if (ros::Time::now().toSec() > (secs)) {
+				srv.request.enable = true;
+				client.call(srv);
+				ros::spinOnce();
+				//xyz: [0.1, -0.15, 0]
+				//rpy: [0, 0, 'pi/2']
+
+
+				move_to(-0.2, -1.23, 0.745, 0);
+				while (!attached) {
+					sleep(0.1);
+					ros::spinOnce();
+				}
+
+				//fast_pick_up_at_time(40.922);
+				go_to_camera();
+				//flip_part();
+				//[0.300, -3.300, 0.750]
+				float tarx = 0.3 + 0.1;
+				float tary = -3.3 + ( -0.15) + 0.2;
+				float tarz = 0.9;
+				float taryaw = 1.57;
+				check_stable(0.03);
+				geometry_msgs::Pose p = compute_offset_transform();
+				float x = tarx + p.position.x;
+				float y = tary + p.position.y;
+				float z = tarz + p.position.z;
+				move_to(x, y, z, taryaw + p.orientation.z + 1.57);
+
+				while (!check_release(x, y, z, 0.01f )) {
+					//ROS_INFO("waiting for arm to arrive");
+					ros::spinOnce();
+					sleep(0.1);
+				}
+
+				srv.request.enable = false;
+				client.call(srv);
+
+
+
+				current_step ++;
+				ROS_INFO("code run");
+				secs = ros::Time::now().toSec() + 1;
+			}
+
+		}
+
+
+		if (current_step == 1) {
+
+			if (ros::Time::now().toSec() > (secs)) {
+				ROS_INFO("NOW executing step %d ...", current_step);
+				srv.request.enable = true;
+				client.call(srv);
+				ros::spinOnce();
+				//xyz: [0.1, -0.15, 0]
+				//rpy: [0, 0, 'pi/2']
+
+
+				go_to_belt(0.146168);
+				fast_pick_up_at_time(44.013);
+
+
+				go_to_camera();
+				//flip_part();
+				//[0.300, -3.300, 0.750]
+				float tarx = 0.3 - 0.1;
+				float tary = -3.3 + ( -0.15) + 0.2;
+				float tarz = 0.9;
+				float taryaw = 1.57;
+				check_stable(0.03);
+				geometry_msgs::Pose p = compute_offset_transform();
+				float x = tarx + p.position.x;
+				float y = tary - p.position.y;
+				float z = tarz + p.position.z;
+				move_to(x, y, z, taryaw + p.orientation.z + 1.57);
+
+				while (!check_release(x, y, z, 0.01f )) {
+					//ROS_INFO("waiting for arm to arrive");
+					ros::spinOnce();
+					sleep(0.1);
+				}
+
+				srv.request.enable = false;
+				client.call(srv);
+
+
+
+
+				ROS_INFO("code run");
+				secs = ros::Time::now().toSec() + 1;
+				current_step ++;
+			}
+
+		}
+
+
+		if (current_step == 2) {
+
+			if (ros::Time::now().toSec() > (secs)) {
+				ROS_INFO("NOW executing step %d ...", current_step);
+				srv.request.enable = true;
+				client.call(srv);
+				ros::spinOnce();
+				// xyz: [0.1, 0.15, 0]
+				//      		 rpy: [0, 0, 0]
+
+
+				move_to(-0.100000, -0.335000, 0.745, 0);
+				while (!attached) {
+					sleep(0.1);
+					ros::spinOnce();
+				}
+
+				//fast_pick_up_at_time(40.922);
+				go_to_camera();
+				//flip_part();
+				//[0.300, -3.300, 0.750]
+				float tarx = 0.3 + 0.1;
+				float tary = -3.3 + ( 0.15) + 0.2;
+				float tarz = 0.9;
+				float taryaw = 0;
+				check_stable(0.03);
+				geometry_msgs::Pose p = compute_offset_transform();
+				float x = tarx + p.position.x;
+				float y = tary + p.position.y;
+				float z = tarz + p.position.z;
+				move_to(x, y, z, taryaw + p.orientation.z + 1.57);
+
+				while (!check_release(x, y, z, 0.01f )) {
+					//ROS_INFO("waiting for arm to arrive");
+					ros::spinOnce();
+					sleep(0.1);
+				}
+
+				srv.request.enable = false;
+				client.call(srv);
+
+
+
+				current_step ++;
+				ROS_INFO("code run");
+				secs = ros::Time::now().toSec() + 1;
+			}
+
+		}
+
+		if (current_step == 3) {
+
+			if (ros::Time::now().toSec() > (secs)) {
+				ROS_INFO("NOW executing step %d ...", current_step);
+				srv.request.enable = true;
+				client.call(srv);
+				ros::spinOnce();
+				//xyz: [0.1, -0.15, 0]
+				//rpy: [0, 0, 'pi/2']
+
+
+				go_to_belt(-0.477030);
+				fast_pick_up_at_time(86.729);
+
+
+				go_to_camera();
+				//flip_part();
+				//[0.300, -3.300, 0.750]
+				float tarx = 0.3 - 0.15;
+				float tary = 3.3 - ( 0.15) - 0.2;
+				float tarz = 0.9;
+				float taryaw = 0;
+				check_stable(0.03);
+				geometry_msgs::Pose p = compute_offset_transform();
+				float x = tarx + p.position.x;
+				float y = tary + p.position.y;
+				float z = tarz + p.position.z;
+				move_to(x, y, z, taryaw + p.orientation.z + 1.57);
+
+				while (!check_release(x, y, z, 0.01f )) {
+					//ROS_INFO("waiting for arm to arrive");
+					ros::spinOnce();
+					sleep(0.1);
+				}
+
+				srv.request.enable = false;
+				client.call(srv);
+
+
+
+
+				ROS_INFO("code run");
+				secs = ros::Time::now().toSec() + 1;
+				current_step ++;
+			}
+
+		}
+
+		if (current_step == 4) {
+
+			if (ros::Time::now().toSec() > (secs)) {
+				srv.request.enable = true;
+				client.call(srv);
+				ros::spinOnce();
+				// xyz: [0.12, -0.2, 0]
+				//rpy: ['pi', 0, 0]
+
+
+				move_to(-0.150000, 0.845, 0.81, 0);
+				while (!attached) {
+					sleep(0.1);
+					ros::spinOnce();
+				}
+
+				
+				go_to_camera();
+				flip_part();
+				//[0.300, -3.300, 0.750]
+				float tarx = 0.3 + 0.12;
+				float tary = 3.3 - ( -0.2) - 0.2;
+				float tarz = 1.2;
+				float taryaw = 0;
+				check_stable(0.03);
+				geometry_msgs::Pose p = compute_offset_transform();
+				float x = tarx + p.position.x;
+				float y = tary + p.position.y;
+				float z = tarz + p.position.z;
+				move_to(x, y, z, taryaw + p.orientation.z + 1.57);
+
+				while (!check_release(x, y, z, 0.01f )) {
+					//ROS_INFO("waiting for arm to arrive");
+					ros::spinOnce();
+					sleep(0.1);
+				}
+
+				srv.request.enable = false;
+				client.call(srv);
+
+
+
+				current_step ++;
+				ROS_INFO("code run");
+				secs = ros::Time::now().toSec() + 1;
+			}
+
+		}
+
+		if (current_step == 5) {
+
+			if (ros::Time::now().toSec() > (secs)) {
+				srv.request.enable = true;
+				client.call(srv);
+				ros::spinOnce();
+				// xyz: [0.12, -0.2, 0]
+				//rpy: ['pi', 0, 0]
+
+
+				move_to(-0.450000, 0.845, 0.81, 0);
+				while (!attached) {
+					sleep(0.1);
+					ros::spinOnce();
+				}
+
+				
+				go_to_camera();
+				flip_part();
+				//[0.300, -3.300, 0.750]
+				float tarx = 0.3 - 0.12;
+				float tary = 3.3 - ( -0.2) - 0.2;
+				float tarz = 1.2;
+				float taryaw = 3.1415;
+				check_stable(0.03);
+				geometry_msgs::Pose p = compute_offset_transform();
+				float x = tarx + p.position.x;
+				float y = tary + p.position.y;
+				float z = tarz + p.position.z;
+				move_to(x, y, z, taryaw + p.orientation.z + 1.57);
+
+				while (!check_release(x, y, z, 0.01f )) {
+					//ROS_INFO("waiting for arm to arrive");
+					ros::spinOnce();
+					sleep(0.1);
+				}
+
+				srv.request.enable = false;
+				client.call(srv);
+
+
+
+				current_step ++;
+				ROS_INFO("code run");
+				secs = ros::Time::now().toSec() + 1;
+			}
+
+		}
+
+		if (current_step == 6) {
+
+			if (ros::Time::now().toSec() > (secs)) {
+				ROS_INFO("NOW executing step %d ...", current_step);
+				srv.request.enable = true;
+				client.call(srv);
+				ros::spinOnce();
+				// xyz: [0.1, 0.15, 0]
+				//      		 rpy: [0, 0, 0]
+
+
+				move_to(-0.233333, -0.468333, 0.745, 0);
+				while (!attached) {
+					sleep(0.1);
+					ros::spinOnce();
+				}
+
+				//fast_pick_up_at_time(40.922);
+				go_to_camera();
+				//flip_part();
+				//[0.300, -3.300, 0.750]
+				float tarx = 0.3 + 0.15;
+				float tary = 3.3 - ( 0.15) - 0.2;
+				float tarz = 0.9;
+				float taryaw = 0;
+				check_stable(0.03);
+				geometry_msgs::Pose p = compute_offset_transform();
+				float x = tarx + p.position.x;
+				float y = tary + p.position.y;
+				float z = tarz + p.position.z;
+				move_to(x, y, z, taryaw + p.orientation.z + 1.57);
+
+				while (!check_release(x, y, z, 0.01f )) {
+					//ROS_INFO("waiting for arm to arrive");
+					ros::spinOnce();
+					sleep(0.1);
+				}
+
+				srv.request.enable = false;
+				client.call(srv);
+
+
+
+				current_step ++;
+				ROS_INFO("code run");
+				secs = ros::Time::now().toSec() + 1;
+			}
+
+		}
+
+		if (current_step == 7) {
+
+			if (ros::Time::now().toSec() > (secs)) {
+				ROS_INFO("NOW executing step %d ...", current_step);
+				srv.request.enable = true;
+				client.call(srv);
+				ros::spinOnce();
+				// xyz: [0.1, 0.15, 0]
+				//      		 rpy: [0, 0, 0]
+
+
+				move_to(-0.366667, -0.601667, 0.744, 0);
+				while (!attached) {
+					sleep(0.1);
+					ros::spinOnce();
+				}
+
+				//fast_pick_up_at_time(40.922);
+				go_to_camera();
+				//flip_part();
+				//[0.300, -3.300, 0.750]
+				float tarx = 0.3;
+				float tary = 3.3 - ( 0.15) - 0.2;
+				float tarz = 0.9;
+				float taryaw = 0;
+				check_stable(0.03);
+				geometry_msgs::Pose p = compute_offset_transform();
+				float x = tarx + p.position.x;
+				float y = tary + p.position.y;
+				float z = tarz + p.position.z;
+				move_to(x, y, z, taryaw + p.orientation.z + 1.57);
+
+				while (!check_release(x, y, z, 0.01f )) {
+					//ROS_INFO("waiting for arm to arrive");
+					ros::spinOnce();
+					sleep(0.1);
+				}
+
+				srv.request.enable = false;
+				client.call(srv);
+				ros::spinOnce();
+
+
+				current_step ++;
+				ROS_INFO("code run");
+				secs = ros::Time::now().toSec() + 1;
+				sleep(2.0);
+				Go_delivery.request.kit_type = "kit1";
+				client_agv1.call(Go_delivery);
+				ros::spinOnce();
+
+			}
+
+		}
+
+		if (current_step == 8) {
+			
+
+			if (ros::Time::now().toSec() > (secs)) {
+				ROS_INFO("NOW executing step %d ...", current_step);
+				srv.request.enable = true;
+				client.call(srv);
+				ros::spinOnce();
+				// xyz: [0.1, 0.15, 0]
+				//      		 rpy: [0, 0, 0]
+
+
+				move_to(-0.500000, -0.735000, 0.743, 0);
+				while (!attached) {
+					sleep(0.1);
+					ros::spinOnce();
+				}
+
+				//fast_pick_up_at_time(40.922);
+				go_to_camera();
+				//flip_part();
+				//[0.300, -3.300, 0.750]
+				float tarx = 0.3 - 0.1;
+				float tary = -3.3 + ( 0.15) + 0.2;
+				float tarz = 0.9;
+				float taryaw = 0;
+				check_stable(0.03);
+				geometry_msgs::Pose p = compute_offset_transform();
+				float x = tarx + p.position.x;
+				float y = tary + p.position.y;
+				float z = tarz + p.position.z;
+				move_to(x, y, z, taryaw + p.orientation.z + 1.57);
+
+				while (!check_release(x, y, z, 0.01f )) {
+					//ROS_INFO("waiting for arm to arrive");
+					ros::spinOnce();
+					sleep(0.1);
+				}
+
+				srv.request.enable = false;
+				client.call(srv);
+
+				ros::spinOnce();
+
+				current_step ++;
+				ROS_INFO("code run");
+				secs = ros::Time::now().toSec() + 1;
+
+				sleep(2.0);
+
+
+				Go_delivery.request.kit_type = "kit0";
+				client_agv2.call(Go_delivery);
+				ros::spinOnce();
+			}
+
+		}
+
+
+
+
 		ros::spinOnce();
 		loop_rate.sleep();
 

@@ -117,7 +117,7 @@ void Grip_Part::get_part_offset(tf2_msgs::TFMessage detect_part) {
 			geometry_msgs::TransformStamped temp_part;
 
 			// wait for transform in 0.1 sec
-			listener.waitForTransform(attached_part.child_frame_id, gripper_frame, ros::Time(0), ros::Duration(0.1));
+			listener.waitForTransform(attached_part.child_frame_id, gripper_frame, ros::Time(0), ros::Duration(1.0));
 
 			listener.lookupTransform(attached_part.child_frame_id, gripper_frame, ros::Time(0), temp_transform);
 

@@ -5,6 +5,10 @@ rosrun osrf_gear gear.py -f `catkin_find --share osrf_gear`/config/qual3a.yaml /
 
 rosrun osrf_gear gear.py -f `catkin_find --share osrf_gear`/config/qual3b.yaml /home/yuxin/helloworld_ws/src/part_perception/config/qual3_config.yaml 
 
+rosrun osrf_gear gear.py -f `catkin_find --share osrf_gear`/config/qual2a.yaml /home/yuxin/helloworld_ws/src/part_perception/config/qual3_config.yaml 
+
+rosrun osrf_gear gear.py -f `catkin_find --share osrf_gear`/config/qual2b.yaml /home/yuxin/helloworld_ws/src/part_perception/config/qual3_config.yaml 
+
 source ~/helloworld_ws/install/setup.bash
 roslaunch ur10_moveit_config ur10_moveit_planning_execution.launch sim:=true
 roslaunch ur10_moveit_config moveit_rviz.launch config:=true
@@ -169,6 +173,132 @@ rosservice call /move_arm/toPose "pose:
     w: 0.0
 mode: 2" 
 
+rosservice call /move_arm/toPose "pose:
+  position:
+    x: -0.200000
+    y: -0.335
+    z: 0.745
+  orientation:
+    x: 0.0
+    y: 0.0
+    z: 0.0
+    w: 0.0
+mode: 1" 
+
+rosservice call /move_arm/toPose "pose:
+  position:
+    x: -0.150000
+    y: 0.845
+    z: 0.81
+  orientation:
+    x: 0.0
+    y: 0.0
+    z: 0.0
+    w: 0.0
+mode: 1" 
+
+#top left
+rosservice call /move_arm/toPose "pose:
+  position:
+    x: -0.100000
+    y: 0.895
+    z: 0.81
+  orientation:
+    x: 0.0
+    y: 0.0
+    z: 0.0
+    w: 0.0
+mode: 1" 
+
+#top
+rosservice call /move_arm/toPose "pose:
+  position:
+    x: -0.100000
+    y: 0.845
+    z: 0.81
+  orientation:
+    x: 0.0
+    y: 0.0
+    z: 0.0
+    w: 0.0
+mode: 1" 
+
+#left
+rosservice call /move_arm/toPose "pose:
+  position:
+    x: -0.150000
+    y: 0.895
+    z: 0.81
+  orientation:
+    x: 0.0
+    y: 0.0
+    z: 0.0
+    w: 0.0
+mode: 1" 
+
+
+rosservice call /move_arm/toPose "pose:
+  position:
+    x: 0.3
+    y: 3.0
+    z: 1.2
+  orientation:
+    x: 0.0
+    y: 0.0
+    z: 0.0
+    w: 0.0
+mode: 2" 
+
+rosservice call /move_arm/toPose "pose:
+  position:
+    x: 0.3
+    y: 3.0
+    z: 0.8
+  orientation:
+    x: 0.0
+    y: 0.0
+    z: 0.0
+    w: 0.0
+mode: 2" 
+
+rosservice call /move_arm/toPose "pose:
+  position:
+    x: 0.3
+    y: 3.0
+    z: 0.8
+  orientation:
+    x: 3.14
+    y: 0.0
+    z: 0.0
+    w: 0.0
+mode: 2" 
+
+rosservice call /move_arm/toPose "pose:
+  position:
+    x: -0.100000
+    y: -0.335
+    z: 0.8
+  orientation:
+    x: 0.0
+    y: 0.0
+    z: 0.0
+    w: 0.0
+mode: 1" 
+
+rosservice call /move_arm/toPose "pose:
+  position:
+    x: 0.0
+    y: -1.841466
+    z: 0.0
+  orientation:
+    x: 0.0
+    y: 0.0
+    z: 0.0
+    w: 0.0
+future_time:
+  secs: 96
+  nsecs: 0
+mode: 3" 
 
 
 

@@ -1076,7 +1076,7 @@ bool add(move_arm::Pick::Request  &req, move_arm::Pick::Response &res)
 		float y = req.pose.position.y + p.position.y;
 		float z = req.pose.position.z + p.position.z;
 		move_to(x, y, z, req.pose.orientation.z + p.orientation.z + 1.57);
-		ROS_INFO("OFFSET: %f , %f, %f", p.position.x,p.position.y,p.position.z);
+		ROS_INFO("OFFSET: %f , %f, %f", p.position.x, p.position.y, p.position.z);
 
 		//ROS_INFO("not printing");
 		ros::spinOnce();
@@ -1084,20 +1084,26 @@ bool add(move_arm::Pick::Request  &req, move_arm::Pick::Response &res)
 		listener.waitForTransform("/world", "/tool0", ros::Time(0), ros::Duration(10.0));
 		listener.lookupTransform("/world", "/tool0", ros::Time(0), gripper_transform);
 		ros::spinOnce();
+
 		// x = std::abs(gripper_transform.getOrigin().x() - x);
 		// y = std::abs(gripper_transform.getOrigin().y() - y);
 		// z = std::abs(gripper_transform.getOrigin().z() - z);
-
+		bool drop_check_finished = false;
 		i = 0;
-		while (!check_release(x, y, z, 0.01f ) && i < 10000) {
+		while (!check_release(x, y, z, 0.01f ) && i < 10000 && !drop_check_finished) {
 			//ROS_INFO("waiting for arm to arrive");
 			ros::spinOnce();
 			listener.waitForTransform("/world", "/tool0", ros::Time(0), ros::Duration(10.0));
 			listener.lookupTransform("/world", "/tool0", ros::Time(0), gripper_transform);
 
-			if (attached == false && res.sum==0) {
+			if (attached == false && res.sum == 0) {
 				ROS_INFO("!!!!!!!!!!!part dropped at %f", gripper_transform.getOrigin().y());
 				res.sum = -1;
+				if (gripper_transform.getOrigin().y() > 2 || gripper_transform.getOrigin().y() < -2) {
+					ROS_INFO("Dropped on AVG, counting as OK!");
+					res.sum = 0;
+				}
+				drop_check_finished = true;
 			}
 			sleep(0.1);
 			i++;
@@ -1109,6 +1115,10 @@ bool add(move_arm::Pick::Request  &req, move_arm::Pick::Response &res)
 		if (attached == false) {
 			ROS_INFO("!!!!!!!!!!!part dropped at %f", gripper_transform.getOrigin().y());
 			res.sum = -1;
+		}
+		if (gripper_transform.getOrigin().y() > 2 || gripper_transform.getOrigin().y() < -2) {
+			ROS_INFO("Dropped on AVG, counting as OK!");
+			res.sum = 0;
 		}
 
 

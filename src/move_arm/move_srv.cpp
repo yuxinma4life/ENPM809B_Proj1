@@ -1030,7 +1030,13 @@ geometry_msgs::Pose compute_offset_transform() {
 
 }
 
-void query_belt_part(std::string part_type) {
+// rosservice call /ariac/query_belt_part "part_type: 'gasket'
+// future_time:
+//   secs: 65
+//   nsecs: 0"
+
+
+bool query_belt_part(std::string part_type) {
 	if (!belt_query_client.exists()) {
 		ROS_INFO("Part Perception Service not Started");
 		belt_query_client.waitForExistence();
@@ -1038,7 +1044,19 @@ void query_belt_part(std::string part_type) {
 
 	part_perception::Inventory_Predication belt_query_srv;
 	belt_query_srv.request.part_type = part_type;
+	belt_query_srv.request.future_time.sec = ros::Time::now().sec + 5;
+	belt_query_srv.request.future_time.nsec = ros::Time::now().nsec;
 	belt_query_client.call(belt_query_srv);
+
+	if (belt_query_srv.response.success) {
+		ROS_INFO("belt query SUCCESS");
+
+	} else {
+		ROS_INFO("belt query FAILURE");
+		return false;
+	}
+
+
 
 }
 
@@ -1097,8 +1115,8 @@ bool add(move_arm::Pick::Request  &req, move_arm::Pick::Response &res)
 		}
 
 		geometry_msgs::Pose p = compute_offset_transform();
-		float x = req.pose.position.x + p.position.x;
-		float y = req.pose.position.y + p.position.y;
+		float x = req.pose.position.x - p.position.x;
+		float y = req.pose.position.y - p.position.y;
 		float z = req.pose.position.z + p.position.z;
 		move_to(x, y, z, req.pose.orientation.z + p.orientation.z + 1.57);
 		ROS_INFO("OFFSET: %f , %f, %f", p.position.x, p.position.y, p.position.z);
@@ -1214,8 +1232,38 @@ bool add(move_arm::Pick::Request  &req, move_arm::Pick::Response &res)
 
 
 	if (req.mode == 3) {
-		go_to_belt(req.pose.position.y);
-		fast_pick_up_at_time(req.future_time.toSec());
+		// go_to_belt(req.pose.position.y);
+		// fast_pick_up_at_time(req.future_time.toSec());
+		//query_belt_part(req.part_type);
+		if (!belt_query_client.exists()) {
+			ROS_INFO("Part Perception Service not Started");
+			belt_query_client.waitForExistence();
+		}
+
+		part_perception::Inventory_Predication belt_query_srv;
+		belt_query_srv.request.part_type = req.part_type;
+		belt_query_srv.request.future_time.sec = ros::Time::now().sec + 3;
+		belt_query_srv.request.future_time.nsec = ros::Time::now().nsec;
+		belt_query_client.call(belt_query_srv);
+
+
+
+		if (belt_query_srv.response.success) {
+			ROS_INFO("belt query SUCCESS");
+			go_to_belt(belt_query_srv.response.parts_info.transforms[0].transform.translation.y+2.2);
+			fast_pick_up_at_time(belt_query_srv.request.future_time.toSec());
+			ros::spinOnce();
+			if(attached){
+				res.sum = 0;
+			}else{
+				res.sum = -1;
+			}
+
+		} else {
+			ROS_INFO("belt query FAILURE");
+			res.sum = -1;
+		}
+
 	}
 
 	if (req.mode == 4) {

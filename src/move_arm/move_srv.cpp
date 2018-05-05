@@ -575,7 +575,7 @@ void go_to_belt(float y) {
 	            -1.51,
 	            0.00,
 	            1);
-	check_stable(0.01);
+	check_stable(0.05);
 
 
 }
@@ -610,7 +610,9 @@ void fast_pick_up_at_time(double secs) {
 	bool isTime = false;
 	double now_secs = 0;
 	secs = secs - 0.1;
+
 	while (!isTime) {
+		ros::spinOnce();
 		now_secs = ros::Time::now().toSec();
 		if (now_secs > secs) {
 			isTime = true;
@@ -1026,6 +1028,10 @@ geometry_msgs::Pose compute_offset_transform() {
 
 }
 
+void query_belt_part(){
+
+}
+
 
 
 
@@ -1067,10 +1073,19 @@ bool add(move_arm::Pick::Request  &req, move_arm::Pick::Response &res)
 		go_to_camera();
 
 
+
 		if (std::abs(req.pose.orientation.x) > 0 || std::abs(req.pose.orientation.y) > 0) {
 			flip_part();
 		}
 		check_stable(0.03);
+		bool drop_check_finished = false;
+
+		if (attached == false) {
+			ROS_INFO("!!!!!!!!!!!part dropped at %f", gripper_transform.getOrigin().y());
+			res.sum = -1;
+			drop_check_finished = true;
+		}
+
 		geometry_msgs::Pose p = compute_offset_transform();
 		float x = req.pose.position.x + p.position.x;
 		float y = req.pose.position.y + p.position.y;
@@ -1088,7 +1103,7 @@ bool add(move_arm::Pick::Request  &req, move_arm::Pick::Response &res)
 		// x = std::abs(gripper_transform.getOrigin().x() - x);
 		// y = std::abs(gripper_transform.getOrigin().y() - y);
 		// z = std::abs(gripper_transform.getOrigin().z() - z);
-		bool drop_check_finished = false;
+		
 		i = 0;
 		while (!check_release(x, y, z, 0.01f ) && i < 10000 && !drop_check_finished) {
 			//ROS_INFO("waiting for arm to arrive");
@@ -1112,7 +1127,7 @@ bool add(move_arm::Pick::Request  &req, move_arm::Pick::Response &res)
 		listener.waitForTransform("/world", "/tool0", ros::Time(0), ros::Duration(10.0));
 		listener.lookupTransform("/world", "/tool0", ros::Time(0), gripper_transform);
 
-		if (attached == false) {
+		if (attached == false && drop_check_finished==false) {
 			ROS_INFO("!!!!!!!!!!!part dropped at %f", gripper_transform.getOrigin().y());
 			res.sum = -1;
 		}

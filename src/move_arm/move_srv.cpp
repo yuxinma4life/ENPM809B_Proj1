@@ -22,6 +22,7 @@
 //gripper offset
 #include "tf2_msgs/TFMessage.h"
 #include "part_perception/Part_Offset_Gripper.h"
+#include "part_perception/Inventory_Predication.h"
 
 #include <vector>
 #include "math.h"
@@ -46,6 +47,7 @@ trajectory_msgs::JointTrajectory msg;
 moveit::planning_interface::MoveGroupInterface *group;
 ros::ServiceClient client;
 ros::ServiceClient part_perception_client;
+ros::ServiceClient belt_query_client;
 
 //arm state variables
 bool grabbing = false;
@@ -1028,7 +1030,15 @@ geometry_msgs::Pose compute_offset_transform() {
 
 }
 
-void query_belt_part(){
+void query_belt_part(std::string part_type) {
+	if (!belt_query_client.exists()) {
+		ROS_INFO("Part Perception Service not Started");
+		belt_query_client.waitForExistence();
+	}
+
+	part_perception::Inventory_Predication belt_query_srv;
+	belt_query_srv.request.part_type = part_type;
+	belt_query_client.call(belt_query_srv);
 
 }
 
@@ -1103,7 +1113,7 @@ bool add(move_arm::Pick::Request  &req, move_arm::Pick::Response &res)
 		// x = std::abs(gripper_transform.getOrigin().x() - x);
 		// y = std::abs(gripper_transform.getOrigin().y() - y);
 		// z = std::abs(gripper_transform.getOrigin().z() - z);
-		
+
 		i = 0;
 		while (!check_release(x, y, z, 0.01f ) && i < 10000 && !drop_check_finished) {
 			//ROS_INFO("waiting for arm to arrive");
@@ -1127,13 +1137,15 @@ bool add(move_arm::Pick::Request  &req, move_arm::Pick::Response &res)
 		listener.waitForTransform("/world", "/tool0", ros::Time(0), ros::Duration(10.0));
 		listener.lookupTransform("/world", "/tool0", ros::Time(0), gripper_transform);
 
-		if (attached == false && drop_check_finished==false) {
+		if (attached == false && drop_check_finished == false) {
 			ROS_INFO("!!!!!!!!!!!part dropped at %f", gripper_transform.getOrigin().y());
 			res.sum = -1;
 		}
-		if (gripper_transform.getOrigin().y() > 2 || gripper_transform.getOrigin().y() < -2) {
-			ROS_INFO("Dropped on AVG, counting as OK!");
-			res.sum = 0;
+		if (drop_check_finished == false) {
+			if (gripper_transform.getOrigin().y() > 2 || gripper_transform.getOrigin().y() < -2) {
+				ROS_INFO("Dropped on AVG, counting as OK!");
+				res.sum = 0;
+			}
 		}
 
 
@@ -1281,6 +1293,7 @@ int main(int argc, char **argv)
 	tf::TransformListener listener;
 	client = n.serviceClient<osrf_gear::VacuumGripperControl>("/ariac/gripper/control");
 	part_perception_client = n.serviceClient<part_perception::Part_Offset_Gripper>("/ariac/check_part_offset");
+	belt_query_client = n.serviceClient<part_perception::Inventory_Predication>("/ariac/query_belt_part");
 
 	group = new moveit::planning_interface::MoveGroupInterface("manipulator");
 	group->startStateMonitor();

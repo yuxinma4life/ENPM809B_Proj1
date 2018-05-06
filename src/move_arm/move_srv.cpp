@@ -29,6 +29,12 @@
 
 #include <osrf_gear/AGVControl.h>
 
+//TF offset calculation technique
+#include <tf/transform_broadcaster.h>
+
+#include <ros/callback_queue.h>
+#include <ros/spinner.h>
+
 tf::StampedTransform gripper_transform;
 tf::StampedTransform tray_transform;
 geometry_msgs::PoseStamped gripper_target;
@@ -55,6 +61,12 @@ bool enabled = false;
 bool attached = false;
 
 double gripper_to_base_offset = -0.169946;
+
+
+tf::Transform part_target_to_world;
+tf::Transform gripper_target_to_part;
+
+
 
 
 /// Start the competition by waiting for and then calling the start ROS Service.
@@ -197,7 +209,7 @@ void move_to(float x, float y, float z, float dyaw) {
 	}
 	int i = 0;
 
-	while (gripper_target.pose.position.z < safeHeight && i<100) {
+	while (gripper_target.pose.position.z < safeHeight && i < 100) {
 		ros::spinOnce();
 		sleep(0.1);
 		i++;
@@ -470,7 +482,7 @@ void move_to(float x, float y, float z, float dyaw) {
 
 	}
 
-	if (gripper_target.pose.position.y > 2 && y > 2 ){
+	if (gripper_target.pose.position.y > 2 && y > 2 ) {
 		ros::spinOnce();
 		move_joints(current_joint_states_.position[0],
 		            current_joint_states_.position[1],
@@ -778,7 +790,7 @@ void flip_part() {
 	            0,
 	            0.00,
 	            0.5);
-	sleep(1.0);
+	sleep(3.0);
 
 	srv.request.enable = true;
 	client.call(srv);
@@ -806,6 +818,27 @@ void flip_part() {
 	            0,
 	            0.00,
 	            0.1);
+	sleep(1.0);
+	/*
+*===================
+*2nd bin holding right
+*elbow_joint 2.25
+*linear_arm_actuator_joint 0.5
+*shoulder_lift_joint -0.75
+*shoulder_pan_joint 3.14159
+*wrist_1_joint 3.22
+*wrist_2_joint -1.57
+*wrist_3_joint 0.00
+*/
+
+	move_joints(1.62,
+	            2.0,
+	            -0.75,
+	            0,
+	            3.34,
+	            -1.57,
+	            0.00,
+	            0.3);
 	sleep(1.0);
 
 	move_joints(1.62,
@@ -874,11 +907,11 @@ void go_to_camera() {
 	            0.00,
 	            0.3);
 	sleep(2.0);
-	move_joints(2.25,
+	move_joints(1.49,
 	            2.0,
-	            -1.57,
+	            -1.12,
 	            0,
-	            3.22,
+	            4.30,
 	            -1.57,
 	            0.00,
 	            0.3);
@@ -886,9 +919,9 @@ void go_to_camera() {
 
 	move_joints(1.49,
 	            2.0,
-	            -0.87,
+	            -1.12,
 	            0,
-	            4.00,
+	            4.30,
 	            -1.57,
 	            0.00,
 	            0.5);
@@ -982,16 +1015,26 @@ bool check_release(float x, float y, float z, float tolerance) {
 
 
 //returns relative x, y, z and dyaw for gripper to accomplish
-geometry_msgs::Pose compute_offset_transform() {
+tf::Transform compute_offset_transform(geometry_msgs::Pose pose) {
 
-	geometry_msgs::Pose p;
-	p.position.x = 0;
-	p.position.y = 0;
-	p.position.z = 0;
-	p.orientation.x = 0;
-	p.orientation.y = 0;
-	p.orientation.z = 0;
-	p.orientation.w = 0;
+
+	tf::Transform req_pose_transform;
+
+	req_pose_transform.setOrigin(tf::Vector3(pose.position.x, pose.position.y, pose.position.z));
+	tf::Quaternion q;
+	q.setRPY(pose.orientation.x, pose.orientation.y, pose.orientation.z);
+	q.normalize();
+	req_pose_transform.setRotation(q);
+	// br.sendTransform(tf::StampedTransform(req_pose_transform, ros::Time::now(), "/world", "part_target"));
+
+	tf::Transform p;
+	// p.translation.x = 0;
+	// p.translation.y = 0;
+	// p.translation.z = 0;
+	// p.rotation.x = 0;
+	// p.rotation.y = 0;
+	// p.rotation.z = 0;
+	// p.rotation.w = 1;
 
 	ROS_INFO("Computing Offset");
 	if (!part_perception_client.exists()) {
@@ -1002,6 +1045,7 @@ geometry_msgs::Pose compute_offset_transform() {
 	part_perception::Part_Offset_Gripper part_perception_srv;
 	part_perception_srv.request.check_part_offset = true;
 	part_perception_client.call(part_perception_srv);
+
 
 
 	if (!part_perception_srv.response.part_offset_info.transforms.empty()) {
@@ -1024,48 +1068,82 @@ geometry_msgs::Pose compute_offset_transform() {
 					ok = true;
 				}
 				ROS_INFO("Trying to perceive: %d", i);
+				ros::spinOnce();
 				i++;
 				sleep(0.3);
 			}
 
 		}
+		ROS_INFO("Part Perception: x %f y %f z %f", x,
+		         y,
+		         z);
+
+		p.setOrigin(tf::Vector3(x, y, z));
+		tf::Quaternion q1(part_perception_srv.response.part_offset_info.transforms[0].transform.rotation.x,
+		                  part_perception_srv.response.part_offset_info.transforms[0].transform.rotation.y,
+		                  part_perception_srv.response.part_offset_info.transforms[0].transform.rotation.z,
+		                  part_perception_srv.response.part_offset_info.transforms[0].transform.rotation.w);
+		q1.normalize();
+		p.setRotation(q1);
+
+
+		part_target_to_world = req_pose_transform;
+		gripper_target_to_part = p;
+
+		// br.sendTransform(tf::StampedTransform(p, ros::Time::now(), "part_target", "gripper_target"));
+
+
+		// ros::Rate rate(10.0);
+		// while (1) {
+		// 	br.sendTransform(tf::StampedTransform(req_pose_transform, ros::Time::now(), "/world", "part_target"));
+
+		// 	br.sendTransform(tf::StampedTransform(p, ros::Time::now(), "/part_target", "gripper_target"));
+		// 	//ROS_INFO("PUBLISHING transforms");
+		// 	rate.sleep();
+		// }
+
+
+
+
 		// ROS_INFO("Part Perception: %f",
 		//          part_perception_srv.response.part_offset_info.transforms[0].transform.translation.x);
-		tf::Quaternion q(part_perception_srv.response.part_offset_info.transforms[0].transform.rotation.x,
-		                 part_perception_srv.response.part_offset_info.transforms[0].transform.rotation.y,
-		                 part_perception_srv.response.part_offset_info.transforms[0].transform.rotation.z,
-		                 part_perception_srv.response.part_offset_info.transforms[0].transform.rotation.w);
-		tf::Matrix3x3 m(q);
-		double roll, pitch, yaw;
-		m.getRPY(roll, pitch, yaw);
-		ROS_INFO("Part Perception: x %f y %f z %f", part_perception_srv.response.part_offset_info.transforms[0].transform.translation.x,
-		         part_perception_srv.response.part_offset_info.transforms[0].transform.translation.y,
-		         part_perception_srv.response.part_offset_info.transforms[0].transform.translation.z);
-		ROS_INFO("Part Perception: Roll %f Pitch %f Yaw %f", roll, pitch, yaw);
+		// tf::Quaternion q(part_perception_srv.response.part_offset_info.transforms[0].transform.rotation.x,
+		//                  part_perception_srv.response.part_offset_info.transforms[0].transform.rotation.y,
+		//                  part_perception_srv.response.part_offset_info.transforms[0].transform.rotation.z,
+		//                  part_perception_srv.response.part_offset_info.transforms[0].transform.rotation.w);
+		// tf::Matrix3x3 m(q);
+		// double roll, pitch, yaw;
+		// m.getRPY(roll, pitch, yaw);
+		// ROS_INFO("Part Perception: x %f y %f z %f", part_perception_srv.response.part_offset_info.transforms[0].transform.translation.x,
+		//          part_perception_srv.response.part_offset_info.transforms[0].transform.translation.y,
+		//          part_perception_srv.response.part_offset_info.transforms[0].transform.translation.z);
+		// ROS_INFO("Part Perception: Roll %f Pitch %f Yaw %f", roll, pitch, yaw);
 
-		p.orientation.x = roll;
-		p.orientation.y = pitch;
-		p.orientation.z = yaw;
+		// p.orientation.x = roll;
+		// p.orientation.y = pitch;
+		// p.orientation.z = yaw;
 
-		x = part_perception_srv.response.part_offset_info.transforms[0].transform.translation.x;
-		y = part_perception_srv.response.part_offset_info.transforms[0].transform.translation.y;
-		z = part_perception_srv.response.part_offset_info.transforms[0].transform.translation.z;
+		// x = part_perception_srv.response.part_offset_info.transforms[0].transform.translation.x;
+		// y = part_perception_srv.response.part_offset_info.transforms[0].transform.translation.y;
+		// z = part_perception_srv.response.part_offset_info.transforms[0].transform.translation.z;
 
 
-		// p.position.x = - y * cos(yaw) + x * sin(yaw);
-		// p.position.y =  - y * sin(yaw) - x * cos(yaw);
+		// // p.position.x = - y * cos(yaw) + x * sin(yaw);
+		// // p.position.y =  - y * sin(yaw) - x * cos(yaw);
+		// // p.position.z = z * 2.0;
+
+
+		// p.position.x = + y * sin(yaw)  - x * cos(yaw);
+		// p.position.y =  y * cos(yaw) + x * sin(yaw);
 		// p.position.z = z * 2.0;
 
 
-		p.position.x = + y * sin(yaw)  - x * cos(yaw);
-		p.position.y =  y * cos(yaw) + x * sin(yaw);
-		p.position.z = z * 2.0;
+		// ROS_INFO("offset ysin: %f", y * sin(yaw));
+		// ROS_INFO("offset ycos: %f", y * cos(yaw));
+		// ROS_INFO("offset xsin: %f", x * sin(yaw));
+		// ROS_INFO("offset xcos: %f", x * cos(yaw));
 
-
-		ROS_INFO("offset ysin: %f", y * sin(yaw));
-		ROS_INFO("offset ycos: %f", y * cos(yaw));
-		ROS_INFO("offset xsin: %f", x * sin(yaw));
-		ROS_INFO("offset xcos: %f", x * cos(yaw));
+		// //xsin xcos should be ok from top left
 
 
 
@@ -1112,6 +1190,11 @@ bool query_belt_part(std::string part_type) {
 }
 
 
+void tf_broadcast(){
+		tf::TransformBroadcaster br;
+		br.sendTransform(tf::StampedTransform(part_target_to_world, ros::Time::now(), "/world", "part_target"));
+		br.sendTransform(tf::StampedTransform(gripper_target_to_part, ros::Time::now(), "/part_target", "gripper_target"));
+}
 
 
 bool add(move_arm::Pick::Request  &req, move_arm::Pick::Response &res)
@@ -1164,22 +1247,44 @@ bool add(move_arm::Pick::Request  &req, move_arm::Pick::Response &res)
 			res.sum = -1;
 			drop_check_finished = true;
 		}
+		compute_offset_transform(req.pose);
+		tf::StampedTransform p;
+		
 
-		geometry_msgs::Pose p = compute_offset_transform();
-		p = compute_offset_transform();
-		p = compute_offset_transform();
-		p = compute_offset_transform();
-		float x = req.pose.position.x + p.position.x;
-		float y = req.pose.position.y + p.position.y;
-		float z = req.pose.position.z ; //+ p.position.z
-		float dyaw = req.pose.orientation.z + p.orientation.z + 1.57;
-		move_to(x, y, z, dyaw);
-		ROS_INFO("OFFSET: x: %f , y: %f, z: %f", p.position.x, p.position.y, p.position.z);
+
+
+		ros::spinOnce();
+		tf::TransformListener listener;
+		listener.waitForTransform("/world", "gripper_target", ros::Time(0), ros::Duration(10.0));
+		listener.lookupTransform("/world", "gripper_target", ros::Time(0), p);
+		ros::spinOnce();
+		//spinner.stop();
+		// p = compute_offset_transform();
+		// p = compute_offset_transform();
+		// p = compute_offset_transform();
+		// float x = req.pose.position.x + p.translation.x;
+		// float y = req.pose.position.y + p.translation.y;
+		// float z = req.pose.position.z ; //+ p.position.z
+		// float dyaw = req.pose.orientation.z + p.orientation.z + 1.57;
+		float x = p.getOrigin().x();
+		float y = p.getOrigin().y();
+		float z = p.getOrigin().z() ; //+ p.position.z
+		float dyaw = req.pose.orientation.z + 1.57;
+
+		tf::Quaternion q(p.getRotation().x(),
+		                 p.getRotation().y(),
+		                 p.getRotation().z(),
+		                 p.getRotation().w());
+		tf::Matrix3x3 m(q);
+		double roll, pitch, yaw;
+		m.getRPY(roll, pitch, yaw);
+
+		move_to(x, y, z, yaw+ 1.57079632679);
+		// ROS_INFO("OFFSET: x: %f , y: %f, z: %f", p.translation.x, p.translation.y, p.translation.z);
 		ROS_INFO("Commanded Yaw: %f", dyaw);
 
 		//ROS_INFO("not printing");
 		ros::spinOnce();
-		tf::TransformListener listener;
 		listener.waitForTransform("/world", "/tool0", ros::Time(0), ros::Duration(10.0));
 		listener.lookupTransform("/world", "/tool0", ros::Time(0), gripper_transform);
 		ros::spinOnce();
@@ -1222,6 +1327,8 @@ bool add(move_arm::Pick::Request  &req, move_arm::Pick::Response &res)
 			}
 		}
 
+		check_stable(0.03);
+
 
 		srv.request.enable = false;
 		//ROS_INFO("calling gripper release service");
@@ -1229,7 +1336,7 @@ bool add(move_arm::Pick::Request  &req, move_arm::Pick::Response &res)
 
 		ros::spinOnce();
 		i = 0;
-		while (!check_release(x, y, z, 0.05f ) && i < 10000) {
+		while (!check_release(x, y, z, 0.02f ) && i < 10000) {
 			//ROS_INFO("waiting for arm to arrive");
 			ros::spinOnce();
 			sleep(0.1);
@@ -1274,7 +1381,7 @@ bool add(move_arm::Pick::Request  &req, move_arm::Pick::Response &res)
 				ROS_INFO("belt query in range");
 				go_to_belt(belt_query_srv.response.parts_info.transforms[0].transform.translation.y + 2.2);
 				fast_pick_up_at_time(belt_query_srv.request.future_time.toSec());
-			}else{
+			} else {
 				ROS_INFO("belt query out of range, returning -1");
 			}
 
@@ -1313,7 +1420,7 @@ bool add(move_arm::Pick::Request  &req, move_arm::Pick::Response &res)
 
 
 		go_to_camera();
-		compute_offset_transform();
+		//compute_offset_transform();
 
 
 	}
@@ -1358,6 +1465,15 @@ void joint_state_callback(
 
 }
 
+void track_transforms(tf::TransformBroadcaster br) {
+
+	if (!(part_target_to_world.getOrigin().x() == 0 && part_target_to_world.getOrigin().y() == 0 && part_target_to_world.getOrigin().z() == 0)) {
+		br.sendTransform(tf::StampedTransform(part_target_to_world, ros::Time::now(), "/world", "part_target"));
+		br.sendTransform(tf::StampedTransform(gripper_target_to_part, ros::Time::now(), "/part_target", "gripper_target"));
+	}
+
+}
+
 
 int main(int argc, char **argv)
 {
@@ -1374,6 +1490,8 @@ int main(int argc, char **argv)
 	ros::Subscriber gripper_sub = n.subscribe("ariac/gripper/state", 1000, gripper_callback);
 	ros::Subscriber joint_state_subscriber = n.subscribe("/ariac/joint_states", 10, joint_state_callback);
 
+	//transform boardcaster for tracking
+	static tf::TransformBroadcaster br;
 
 
 	start_competition(n);
@@ -1389,12 +1507,19 @@ int main(int argc, char **argv)
 	ros::ServiceClient client_agv2 = n.serviceClient<osrf_gear::AGVControl>("/ariac/agv2");
 	osrf_gear::AGVControl Go_delivery;
 
+	ros::AsyncSpinner spinner(4);
+	spinner.start();
+
 
 	ros::Rate loop_rate(100);
 	while (ros::ok())
 	{
 		listener.waitForTransform("/world", "/vacuum_gripper_link", ros::Time(0), ros::Duration(10.0));
 		listener.lookupTransform("/world", "/vacuum_gripper_link", ros::Time(0), gripper_transform);
+
+
+
+		track_transforms(br);
 
 		srv.request.enable = true;
 		client.call(srv);
@@ -1405,3 +1530,106 @@ int main(int argc, char **argv)
 	}
 }
 
+
+
+// geometry_msgs::Pose compute_offset_transform() {
+
+// 	geometry_msgs::Pose p;
+// 	p.position.x = 0;
+// 	p.position.y = 0;
+// 	p.position.z = 0;
+// 	p.orientation.x = 0;
+// 	p.orientation.y = 0;
+// 	p.orientation.z = 0;
+// 	p.orientation.w = 0;
+
+// 	ROS_INFO("Computing Offset");
+// 	if (!part_perception_client.exists()) {
+// 		ROS_INFO("Part Perception Service not Started");
+// 		part_perception_client.waitForExistence();
+// 	}
+
+// 	part_perception::Part_Offset_Gripper part_perception_srv;
+// 	part_perception_srv.request.check_part_offset = true;
+// 	part_perception_client.call(part_perception_srv);
+
+
+
+// 	if (!part_perception_srv.response.part_offset_info.transforms.empty()) {
+// 		float x = part_perception_srv.response.part_offset_info.transforms[0].transform.translation.x;
+// 		float y = part_perception_srv.response.part_offset_info.transforms[0].transform.translation.y;
+// 		float z = part_perception_srv.response.part_offset_info.transforms[0].transform.translation.z;
+// 		float camera_move_tolerance = 0.15;
+// 		if (std::abs(x) > camera_move_tolerance || std::abs(y) > camera_move_tolerance || std::abs(z) > camera_move_tolerance) {
+// 			ROS_INFO("Camera has moved!!!");
+
+// 			bool ok = false;
+// 			int i = 0;
+// 			while (!ok && i < 1000) {
+// 				part_perception_srv.request.check_part_offset = true;
+// 				part_perception_client.call(part_perception_srv);
+// 				x = part_perception_srv.response.part_offset_info.transforms[0].transform.translation.x;
+// 				y = part_perception_srv.response.part_offset_info.transforms[0].transform.translation.y;
+// 				z = part_perception_srv.response.part_offset_info.transforms[0].transform.translation.z;
+// 				if (std::abs(x) < camera_move_tolerance && std::abs(y) < camera_move_tolerance && std::abs(z) < camera_move_tolerance) {
+// 					ok = true;
+// 				}
+// 				ROS_INFO("Trying to perceive: %d", i);
+// 				i++;
+// 				sleep(0.3);
+// 			}
+
+// 		}
+// 		// ROS_INFO("Part Perception: %f",
+// 		//          part_perception_srv.response.part_offset_info.transforms[0].transform.translation.x);
+// 		tf::Quaternion q(part_perception_srv.response.part_offset_info.transforms[0].transform.rotation.x,
+// 		                 part_perception_srv.response.part_offset_info.transforms[0].transform.rotation.y,
+// 		                 part_perception_srv.response.part_offset_info.transforms[0].transform.rotation.z,
+// 		                 part_perception_srv.response.part_offset_info.transforms[0].transform.rotation.w);
+// 		tf::Matrix3x3 m(q);
+// 		double roll, pitch, yaw;
+// 		m.getRPY(roll, pitch, yaw);
+// 		ROS_INFO("Part Perception: x %f y %f z %f", part_perception_srv.response.part_offset_info.transforms[0].transform.translation.x,
+// 		         part_perception_srv.response.part_offset_info.transforms[0].transform.translation.y,
+// 		         part_perception_srv.response.part_offset_info.transforms[0].transform.translation.z);
+// 		ROS_INFO("Part Perception: Roll %f Pitch %f Yaw %f", roll, pitch, yaw);
+
+// 		p.orientation.x = roll;
+// 		p.orientation.y = pitch;
+// 		p.orientation.z = yaw;
+
+// 		x = part_perception_srv.response.part_offset_info.transforms[0].transform.translation.x;
+// 		y = part_perception_srv.response.part_offset_info.transforms[0].transform.translation.y;
+// 		z = part_perception_srv.response.part_offset_info.transforms[0].transform.translation.z;
+
+
+// 		// p.position.x = - y * cos(yaw) + x * sin(yaw);
+// 		// p.position.y =  - y * sin(yaw) - x * cos(yaw);
+// 		// p.position.z = z * 2.0;
+
+
+// 		p.position.x = + y * sin(yaw)  - x * cos(yaw);
+// 		p.position.y =  y * cos(yaw) + x * sin(yaw);
+// 		p.position.z = z * 2.0;
+
+
+// 		ROS_INFO("offset ysin: %f", y * sin(yaw));
+// 		ROS_INFO("offset ycos: %f", y * cos(yaw));
+// 		ROS_INFO("offset xsin: %f", x * sin(yaw));
+// 		ROS_INFO("offset xcos: %f", x * cos(yaw));
+
+// 		//xsin xcos should be ok from top left
+
+
+
+
+
+
+
+// 	} else {
+// 		ROS_INFO("Gripper is holding nothing!");
+// 	}
+
+// 	return p;
+
+// }
